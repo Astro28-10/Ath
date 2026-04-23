@@ -1,0 +1,17 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "description": "SkillBond Smart Contracts",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.js"
+  },
+  "devDependencies": {
+    "hardhat": "^2.28.6",
+    "chai": "^4.5.0"
+  },
+  "dependencies": {
+    "ethers": "^6.16.0"
+  }
+}

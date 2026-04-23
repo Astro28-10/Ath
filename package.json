@@ -1,0 +1,29 @@
+{
+  "name": "skillbond-mvp",
+  "version": "1.0.0",
+  "description": "SkillBond: Reputation-Backed Micro-Escrow for Freelance Projects",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install && cd contracts && npm install && cd ../backend && npm install && cd ../frontend && npm install && cd ..",
+    "compile": "cd contracts && npm run compile && cd ..",
+    "backend:start": "cd backend && npm start",
+    "frontend:start": "cd frontend && npm run dev",
+    "dev": "concurrently --kill-others \"npm run backend:start\" \"npm run frontend:start\"",
+    "contracts:test": "cd contracts && npm run test",
+    "demo": "bash demo.sh"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "escrow",
+    "freelance",
+    "reputation",
+    "web3"
+  ],
+  "author": "SkillBond Team",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
