@@ -1,4 +1,5 @@
-require("hardhat/config");
+require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config();
 
 const POLYGON_AMOY_RPC = process.env.POLYGON_AMOY_RPC || "https://rpc-amoy.polygon.technology";
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "0000000000000000000000000000000000000000000000000000000000000000";

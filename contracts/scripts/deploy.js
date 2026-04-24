@@ -7,21 +7,23 @@ async function main() {
   // Deploy ReputationRegistry first
   const ReputationRegistry = await hre.ethers.getContractFactory("ReputationRegistry");
   const reputationRegistry = await ReputationRegistry.deploy();
-  await reputationRegistry.deployed();
-  console.log("✓ ReputationRegistry deployed to:", reputationRegistry.address);
+  await reputationRegistry.waitForDeployment();
+  const regAddress = await reputationRegistry.getAddress();
+  console.log("? ReputationRegistry deployed to:", regAddress);
 
   // Deploy EscrowContract
   const EscrowContract = await hre.ethers.getContractFactory("EscrowContract");
   const escrowContract = await EscrowContract.deploy();
-  await escrowContract.deployed();
-  console.log("✓ EscrowContract deployed to:", escrowContract.address);
+  await escrowContract.waitForDeployment();
+  const escrowAddress = await escrowContract.getAddress();
+  console.log("? EscrowContract deployed to:", escrowAddress);
 
   // Save addresses for frontend
   const addresses = {
-    reputationRegistry: reputationRegistry.address,
-    escrowContract: escrowContract.address,
+    reputationRegistry: regAddress,
+    escrowContract: escrowAddress,
     network: hre.network.name,
-    chainId: (await hre.ethers.provider.getNetwork()).chainId,
+    chainId: (await hre.ethers.provider.getNetwork()).chainId.toString(),
     timestamp: new Date().toISOString(),
   };
 
