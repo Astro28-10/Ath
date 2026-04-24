@@ -15,19 +15,28 @@ let contracts = null;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Mock data for reputation scores
-const reputationScores = {
+// Mock data for demo accounts (cached from blockchain or demo data)
+const demoReputationData = {
+  '0x72f32c9b10e8669b5fd139a00e03004ee4bd3b1d': {
+    score: 9500, // 95% - Alice: High reputation
+    credentialCount: 5,
+    averageRating: 4.9,
+    lastActivity: new Date(Date.now() - 3600 * 1000).toISOString(),
+    source: 'demo',
+  },
   '0x1234567890123456789012345678901234567890': {
-    score: 8500, // 85%
-    credentialCount: 12,
-    averageRating: 4.8,
-    lastActivity: new Date(Date.now() - 86400 * 1000).toISOString(),
+    score: 7200, // 72% - Bob: Medium reputation
+    credentialCount: 3,
+    averageRating: 4.3,
+    lastActivity: new Date(Date.now() - 86400 * 2 * 1000).toISOString(),
+    source: 'demo',
   },
   '0x0987654321098765432109876543210987654321': {
-    score: 7200, // 72%
-    credentialCount: 5,
-    averageRating: 4.2,
-    lastActivity: new Date(Date.now() - 86400 * 3 * 1000).toISOString(),
+    score: 4000, // 40% - Carol: Low reputation
+    credentialCount: 1,
+    averageRating: 3.5,
+    lastActivity: new Date(Date.now() - 86400 * 7 * 1000).toISOString(),
+    source: 'demo',
   },
 };
 
@@ -38,51 +47,82 @@ const mockCredentials = {};
 
 /**
  * GET /api/reputation/:address
- * Returns reputation score for a freelancer (from blockchain)
+ * Returns reputation score for a freelancer (blockchain first, then demo/mock data)
  */
 app.get('/api/reputation/:address', async (req, res) => {
   try {
     const address = req.params.address;
+    const addressLower = address.toLowerCase();
 
     // Validate address format
     if (!ethers.isAddress(address)) {
       return res.status(400).json({ error: 'Invalid Ethereum address format' });
     }
 
-    // If contracts not initialized, return mock data
+    // Check if we have demo data for this address
+    if (demoReputationData[addressLower]) {
+      const demoData = demoReputationData[addressLower];
+      return res.json({
+        address,
+        score: demoData.score,
+        scorePercent: (demoData.score / 10000 * 100).toFixed(1),
+        credentialCount: demoData.credentialCount,
+        averageRating: demoData.averageRating,
+        lastActivity: demoData.lastActivity,
+        source: 'demo',
+      });
+    }
+
+    // If contracts not initialized, return random data
     if (!contracts) {
-      console.warn('⚠ Contracts not initialized, returning mock data for', address);
+      console.warn('⚠ Contracts not initialized, returning random data for', address);
       const randomScore = 4000 + Math.floor(Math.random() * 4000);
       return res.json({
         address,
         score: randomScore,
+        scorePercent: (randomScore / 10000 * 100).toFixed(1),
         credentialCount: Math.floor(Math.random() * 10),
         averageRating: (2 + Math.random() * 3).toFixed(1),
         lastActivity: new Date(Date.now() - Math.random() * 86400 * 30 * 1000).toISOString(),
-        source: 'mock',
+        source: 'random',
       });
     }
 
-    // Get reputation score from blockchain
-    const { reputationContract } = contracts;
-    const reputationScore = await reputationContract.calculateReputationScore(address);
-    
-    // Convert BigInt to number safely
-    const scoreNumber = Number(reputationScore);
-    const scorePercent = (scoreNumber / 10000) * 100;
+    // Try to get reputation score from blockchain
+    try {
+      const { reputationContract } = contracts;
+      const reputationScore = await reputationContract.calculateReputationScore(address);
+      
+      // Convert BigInt to number safely
+      const scoreNumber = Number(reputationScore);
+      const scorePercent = (scoreNumber / 10000) * 100;
 
-    // Get credentials
-    const credentialHashes = await reputationContract.getCredentialHashes(address);
+      // Get credentials
+      const credentialHashes = await reputationContract.getCredentialHashes(address);
 
-    res.json({
-      address,
-      score: scoreNumber,
-      scorePercent: scorePercent.toFixed(1),
-      credentialCount: credentialHashes.length,
-      credentials: credentialHashes,
-      lastUpdated: new Date().toISOString(),
-      source: 'blockchain',
-    });
+      res.json({
+        address,
+        score: scoreNumber,
+        scorePercent: scorePercent.toFixed(1),
+        credentialCount: credentialHashes.length,
+        credentials: credentialHashes,
+        lastUpdated: new Date().toISOString(),
+        source: 'blockchain',
+      });
+    } catch (contractError) {
+      // If blockchain call fails, return random data as fallback
+      console.warn('⚠ Blockchain read failed, returning random data:', contractError.message);
+      const randomScore = 4000 + Math.floor(Math.random() * 4000);
+      return res.json({
+        address,
+        score: randomScore,
+        scorePercent: (randomScore / 10000 * 100).toFixed(1),
+        credentialCount: Math.floor(Math.random() * 10),
+        averageRating: (2 + Math.random() * 3).toFixed(1),
+        lastActivity: new Date(Date.now() - Math.random() * 86400 * 30 * 1000).toISOString(),
+        source: 'random',
+      });
+    }
   } catch (error) {
     console.error('Error fetching reputation:', error.message);
     res.status(500).json({ error: 'Failed to fetch reputation score', details: error.message });

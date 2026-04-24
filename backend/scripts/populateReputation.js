@@ -22,21 +22,21 @@ const DEMO_ACCOUNTS = [
     name: 'alice.eth',
     address: '0x72f32C9b10e8669b5Fd139a00e03004eE4bd3b1D',
     targetScore: 95,
-    projectsToCreate: 50, // More projects = higher reputation
+    projectsToCreate: 5, // Reduced from 50 to conserve gas
     description: 'High reputation freelancer (95%)',
   },
   {
     name: 'bob.eth',
     address: '0x1234567890123456789012345678901234567890', // Demo address
     targetScore: 72,
-    projectsToCreate: 15,
+    projectsToCreate: 3, // Reduced from 15
     description: 'Medium reputation freelancer (72%)',
   },
   {
     name: 'carol.eth',
     address: '0x0987654321098765432109876543210987654321', // Demo address
     targetScore: 40,
-    projectsToCreate: 2,
+    projectsToCreate: 1, // Reduced from 2
     description: 'Low reputation freelancer (40%)',
   },
 ];
