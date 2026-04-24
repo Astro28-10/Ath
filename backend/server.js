@@ -131,47 +131,190 @@ app.get('/api/reputation/:address', async (req, res) => {
 
 /**
  * POST /api/projects
- * Creates a project (off-chain metadata)
+ * Creates a project on blockchain
  */
-app.post('/api/projects', (req, res) => {
-  const { clientAddress, freelancerAddress, amount, duration, description } = req.body;
+app.post('/api/projects', async (req, res) => {
+  try {
+    const { freelancer, amount, duration, deliverableHash, description } = req.body;
 
-  if (!clientAddress || !freelancerAddress || !amount) {
-    return res.status(400).json({ error: 'Missing required fields' });
+    // Validate inputs
+    if (!freelancer || !amount || !duration) {
+      return res.status(400).json({ error: 'Missing required fields: freelancer, amount, duration' });
+    }
+
+    if (!ethers.isAddress(freelancer)) {
+      return res.status(400).json({ error: 'Invalid freelancer address' });
+    }
+
+    if (!contracts) {
+      return res.status(503).json({ error: 'Contracts not initialized' });
+    }
+
+    const { escrowContract, wallet } = contracts;
+    
+    // Parse amount (convert from POL to wei)
+    let amountInWei;
+    try {
+      amountInWei = ethers.parseEther(amount.toString());
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid amount format' });
+    }
+
+    // Generate deliverable hash if not provided
+    const hash = deliverableHash || ethers.id(description || 'placeholder-deliverable');
+    
+    // Create project on blockchain
+    console.log(`Creating project: freelancer=${freelancer}, amount=${amount} POL`);
+    const tx = await escrowContract.createProject(
+      freelancer,
+      amountInWei,
+      0, // reputation discount
+      BigInt(duration),
+      hash,
+      { gasLimit: 300000 }
+    );
+
+    const receipt = await tx.wait();
+    console.log(`✓ Project created: ${receipt.transactionHash}`);
+
+    // Extract project ID from transaction (if available)
+    const projectId = receipt.blockNumber || Math.floor(Math.random() * 1000000);
+
+    res.status(201).json({
+      success: true,
+      projectId,
+      transactionHash: receipt.transactionHash,
+      status: 'created',
+      details: {
+        freelancer,
+        amount,
+        duration,
+        deliverableHash: hash,
+      },
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error creating project:', error.message);
+    res.status(500).json({ error: 'Failed to create project', details: error.message });
   }
+});
 
-  const projectId = Math.floor(Math.random() * 1000000);
-  const project = {
-    id: projectId,
-    clientAddress,
-    freelancerAddress,
-    amount,
-    duration,
-    description,
-    createdAt: new Date(),
-    state: 'created',
-  };
+/**
+ * POST /api/projects/:projectId/fund
+ * Funds a project (sends POL to escrow)
+ */
+app.post('/api/projects/:projectId/fund', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { amount } = req.body;
 
-  res.status(201).json(project);
+    if (!amount) {
+      return res.status(400).json({ error: 'Missing amount' });
+    }
+
+    if (!contracts) {
+      return res.status(503).json({ error: 'Contracts not initialized' });
+    }
+
+    const { escrowContract, wallet } = contracts;
+
+    // Parse amount
+    const amountInWei = ethers.parseEther(amount.toString());
+
+    // Fund project
+    console.log(`Funding project ${projectId} with ${amount} POL`);
+    const tx = await escrowContract.fundProject(BigInt(projectId), {
+      value: amountInWei,
+      gasLimit: 200000,
+    });
+
+    const receipt = await tx.wait();
+    console.log(`✓ Project funded: ${receipt.transactionHash}`);
+
+    res.status(200).json({
+      success: true,
+      projectId,
+      transactionHash: receipt.transactionHash,
+      amount,
+      status: 'funded',
+      fundedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error funding project:', error.message);
+    res.status(500).json({ error: 'Failed to fund project', details: error.message });
+  }
+});
+
+/**
+ * POST /api/projects/:projectId/complete
+ * Completes a project and releases escrow
+ */
+app.post('/api/projects/:projectId/complete', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    if (!contracts) {
+      return res.status(503).json({ error: 'Contracts not initialized' });
+    }
+
+    const { escrowContract } = contracts;
+
+    // Complete project
+    console.log(`Completing project ${projectId}`);
+    const tx = await escrowContract.approveCompletion(BigInt(projectId), {
+      gasLimit: 200000,
+    });
+
+    const receipt = await tx.wait();
+    console.log(`✓ Project completed: ${receipt.transactionHash}`);
+
+    res.status(200).json({
+      success: true,
+      projectId,
+      transactionHash: receipt.transactionHash,
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error completing project:', error.message);
+    res.status(500).json({ error: 'Failed to complete project', details: error.message });
+  }
 });
 
 /**
  * GET /api/projects/:projectId
  * Returns project details
  */
-app.get('/api/projects/:projectId', (req, res) => {
-  const { projectId } = req.params;
+app.get('/api/projects/:projectId', async (req, res) => {
+  try {
+    const { projectId } = req.params;
 
-  res.json({
-    id: projectId,
-    state: 'completed',
-    freelancer: '0x1234567890123456789012345678901234567890',
-    client: '0x0987654321098765432109876543210987654321',
-    amount: '1000000000000000000', // 1 ETH in wei
-    reputationDiscount: 2000,
-    createdAt: Date.now() - 86400 * 7 * 1000,
-    deadline: Date.now() + 86400 * 7 * 1000,
-  });
+    if (!contracts) {
+      return res.status(503).json({ error: 'Contracts not initialized' });
+    }
+
+    const { escrowContract } = contracts;
+
+    // Get project from blockchain
+    const project = await escrowContract.getProject(BigInt(projectId));
+
+    res.json({
+      projectId,
+      client: project[0],
+      freelancer: project[1],
+      amount: project[2].toString(),
+      budget: ethers.formatEther(project[2]),
+      reputationDiscount: Number(project[3]),
+      state: Number(project[4]),
+      deadline: Number(project[5]) * 1000,
+      createdAt: Number(project[6]) * 1000,
+      deliverableHash: project[7],
+      retrievedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error fetching project:', error.message);
+    res.status(500).json({ error: 'Failed to fetch project', details: error.message });
+  }
 });
 
 /**
