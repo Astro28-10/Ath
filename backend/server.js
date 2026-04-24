@@ -433,6 +433,166 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ============================================
+// SIMULATION ENDPOINTS (Offline Demo Mode)
+// ============================================
+
+// Import escrow calculator
+const {
+  calculateEscrow,
+  calculateReputationImpact,
+  generateTimeline,
+  calculateRatingImpact,
+  simulateWorkflow,
+} = require('./utils/escrowCalculator');
+
+/**
+ * POST /api/simulate/calculate-escrow
+ * Calculate escrow costs based on reputation scores
+ */
+app.post('/api/simulate/calculate-escrow', (req, res) => {
+  try {
+    const { baseAmount, clientReputation, freelancerReputation } = req.body;
+
+    if (!baseAmount) {
+      return res.status(400).json({ error: 'Missing required field: baseAmount' });
+    }
+
+    const result = calculateEscrow(baseAmount, clientReputation, freelancerReputation);
+
+    res.json({
+      success: true,
+      data: result,
+      calculatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error calculating escrow:', error.message);
+    res.status(500).json({ error: 'Failed to calculate escrow', details: error.message });
+  }
+});
+
+/**
+ * POST /api/simulate/workflow
+ * Simulate complete project workflow from creation to completion
+ */
+app.post('/api/simulate/workflow', (req, res) => {
+  try {
+    const {
+      clientAddress = '0x0000000000000000000000000000000000000000',
+      clientReputation = 5000,
+      freelancerAddress = '0x0000000000000000000000000000000000000001',
+      freelancerReputation = 6000,
+      projectAmount,
+      durationDays = 7,
+      outcome = 'completed',
+      clientRating = 5,
+    } = req.body;
+
+    if (!projectAmount) {
+      return res.status(400).json({ error: 'Missing required field: projectAmount' });
+    }
+
+    const simulation = simulateWorkflow({
+      clientAddress,
+      clientReputation,
+      freelancerAddress,
+      freelancerReputation,
+      projectAmount,
+      durationDays,
+      outcome,
+      clientRating,
+    });
+
+    res.json({
+      success: true,
+      data: simulation,
+      simulatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error simulating workflow:', error.message);
+    res.status(500).json({ error: 'Failed to simulate workflow', details: error.message });
+  }
+});
+
+/**
+ * POST /api/simulate/reputation-impact
+ * Calculate how a project outcome affects reputation
+ */
+app.post('/api/simulate/reputation-impact', (req, res) => {
+  try {
+    const {
+      clientReputation = 5000,
+      freelancerReputation = 6000,
+      projectAmount,
+      outcome = 'completed',
+    } = req.body;
+
+    if (!projectAmount) {
+      return res.status(400).json({ error: 'Missing required field: projectAmount' });
+    }
+
+    const impact = calculateReputationImpact(
+      { clientReputation, freelancerReputation, amount: projectAmount },
+      outcome
+    );
+
+    res.json({
+      success: true,
+      data: impact,
+      calculatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error calculating reputation impact:', error.message);
+    res.status(500).json({ error: 'Failed to calculate reputation impact', details: error.message });
+  }
+});
+
+/**
+ * POST /api/simulate/timeline
+ * Generate project timeline with milestones
+ */
+app.post('/api/simulate/timeline', (req, res) => {
+  try {
+    const { durationDays = 7 } = req.body;
+
+    const timeline = generateTimeline(durationDays);
+
+    res.json({
+      success: true,
+      data: timeline,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error generating timeline:', error.message);
+    res.status(500).json({ error: 'Failed to generate timeline', details: error.message });
+  }
+});
+
+/**
+ * POST /api/simulate/rating-impact
+ * Calculate how a project rating affects freelancer's average rating
+ */
+app.post('/api/simulate/rating-impact', (req, res) => {
+  try {
+    const {
+      currentAvgRating = 4.0,
+      projectRating = 5,
+      totalProjects = 1,
+    } = req.body;
+
+    const impact = calculateRatingImpact(currentAvgRating, projectRating, totalProjects);
+
+    res.json({
+      success: true,
+      data: impact,
+      calculatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error calculating rating impact:', error.message);
+    res.status(500).json({ error: 'Failed to calculate rating impact', details: error.message });
+  }
+});
+
 // Initialize contracts and start server
 async function startServer() {
   try {

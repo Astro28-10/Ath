@@ -44,6 +44,21 @@ export default function Home() {
               <h1 className="text-3xl font-bold">SKILLBOND</h1>
             </div>
             <div className="flex gap-2">
+              <Link href="/dashboard">
+                <button className="border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                  OVERVIEW
+                </button>
+              </Link>
+              <Link href="/learn">
+                <button className="border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-purple-600 hover:text-white hover:border-purple-600 transition">
+                  LEARN
+                </button>
+              </Link>
+              <Link href="/simulate">
+                <button className="border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-600 transition">
+                  INTERACTIVE DEMO
+                </button>
+              </Link>
               <Link href="/certificates">
                 <button className="border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition">
                   📜 CERTIFICATES
@@ -85,6 +100,11 @@ export default function Home() {
               </p>
 
               <div className="flex flex-col gap-3 mb-12">
+                <Link href="/simulate">
+                  <button className="w-full border-2 border-blue-600 px-8 py-3 text-sm font-bold tracking-widest bg-blue-600 text-white hover:bg-blue-700 hover:border-blue-700 transition-all shadow-lg hover:shadow-xl">
+                    TRY INTERACTIVE DEMO →
+                  </button>
+                </Link>
                 <Link href="/search">
                   <button className="w-full border-2 border-black px-8 py-3 text-sm font-bold tracking-widest hover:bg-black hover:text-white transition-all shadow-lg hover:shadow-xl">
                     DISCOVER TALENT →
