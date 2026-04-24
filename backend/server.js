@@ -3,9 +3,13 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { ethers } = require('ethers');
+const { initializeContracts } = require('./contracts');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Contract instances (initialized on startup)
+let contracts = null;
 
 // Middleware
 app.use(cors());
@@ -34,27 +38,55 @@ const mockCredentials = {};
 
 /**
  * GET /api/reputation/:address
- * Returns reputation score for a freelancer
+ * Returns reputation score for a freelancer (from blockchain)
  */
-app.get('/api/reputation/:address', (req, res) => {
-  const address = req.params.address.toLowerCase();
+app.get('/api/reputation/:address', async (req, res) => {
+  try {
+    const address = req.params.address;
 
-  if (reputationScores[address]) {
-    return res.json({
+    // Validate address format
+    if (!ethers.isAddress(address)) {
+      return res.status(400).json({ error: 'Invalid Ethereum address format' });
+    }
+
+    // If contracts not initialized, return mock data
+    if (!contracts) {
+      console.warn('⚠ Contracts not initialized, returning mock data for', address);
+      const randomScore = 4000 + Math.floor(Math.random() * 4000);
+      return res.json({
+        address,
+        score: randomScore,
+        credentialCount: Math.floor(Math.random() * 10),
+        averageRating: (2 + Math.random() * 3).toFixed(1),
+        lastActivity: new Date(Date.now() - Math.random() * 86400 * 30 * 1000).toISOString(),
+        source: 'mock',
+      });
+    }
+
+    // Get reputation score from blockchain
+    const { reputationContract } = contracts;
+    const reputationScore = await reputationContract.calculateReputationScore(address);
+    
+    // Convert BigInt to number safely
+    const scoreNumber = Number(reputationScore);
+    const scorePercent = (scoreNumber / 10000) * 100;
+
+    // Get credentials
+    const credentialHashes = await reputationContract.getCredentialHashes(address);
+
+    res.json({
       address,
-      ...reputationScores[address],
+      score: scoreNumber,
+      scorePercent: scorePercent.toFixed(1),
+      credentialCount: credentialHashes.length,
+      credentials: credentialHashes,
+      lastUpdated: new Date().toISOString(),
+      source: 'blockchain',
     });
+  } catch (error) {
+    console.error('Error fetching reputation:', error.message);
+    res.status(500).json({ error: 'Failed to fetch reputation score', details: error.message });
   }
-
-  // Generate random reputation for unknown addresses (for demo)
-  const randomScore = 4000 + Math.floor(Math.random() * 4000); // 40-80%
-  res.json({
-    address,
-    score: randomScore,
-    credentialCount: Math.floor(Math.random() * 10),
-    averageRating: (2 + Math.random() * 3).toFixed(1),
-    lastActivity: new Date(Date.now() - Math.random() * 86400 * 30 * 1000).toISOString(),
-  });
 });
 
 /**
@@ -173,10 +205,33 @@ app.get('/api/credentials/:credentialId/verify', (req, res) => {
  * Health check
  */
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    contractsInitialized: contracts !== null,
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
-  console.log(`API available at http://localhost:${PORT}/api`);
-});
+// Initialize contracts and start server
+async function startServer() {
+  try {
+    console.log('\n🚀 SkillBond Backend Starting...\n');
+
+    // Initialize contract connections
+    contracts = await initializeContracts();
+    console.log('✓ All contracts initialized successfully\n');
+
+    // Start Express server
+    app.listen(PORT, () => {
+      console.log(`Backend server running on http://localhost:${PORT}`);
+      console.log(`API available at http://localhost:${PORT}/api`);
+      console.log(`Health check: http://localhost:${PORT}/api/health\n`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    console.error(error);
+    process.exit(1);
+  }
+}
+
+startServer();
