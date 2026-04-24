@@ -164,6 +164,7 @@ export default function Search() {
                   // Freelancer Results
                   (results as FreelancerSearchResult[]).map((freelancer, idx) => {
                     const score = freelancer.reputationScore ?? freelancer.score ?? 0;
+                    const scorePercent = (score / 10000 * 100).toFixed(1);
                     const projects = freelancer.credentialCount ?? freelancer.projects ?? 0;
                     const rating = freelancer.averageRating ?? freelancer.rating ?? 0;
 
@@ -176,7 +177,7 @@ export default function Search() {
                           </div>
                           <div>
                             <p className="text-xs tracking-widest font-bold mb-2">SCORE</p>
-                            <p className="font-bold text-lg">{(score / 100).toFixed(0)}%</p>
+                            <p className="font-bold text-lg">{scorePercent}%</p>
                           </div>
                           <div>
                             <p className="text-xs tracking-widest font-bold mb-2">PROJECTS</p>

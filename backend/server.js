@@ -15,6 +15,13 @@ let contracts = null;
 app.use(cors());
 app.use(bodyParser.json());
 
+// ENS name to address mapping for demo (no actual ENS, just for demo)
+const ensMapping = {
+  'alice.eth': '0x72f32c9b10e8669b5fd139a00e03004ee4bd3b1d',
+  'bob.eth': '0x1234567890123456789012345678901234567890',
+  'carol.eth': '0x0987654321098765432109876543210987654321',
+};
+
 // Mock data for demo accounts (cached from blockchain or demo data)
 const demoReputationData = {
   '0x72f32c9b10e8669b5fd139a00e03004ee4bd3b1d': {
@@ -51,19 +58,27 @@ const mockCredentials = {};
  */
 app.get('/api/reputation/:address', async (req, res) => {
   try {
-    const address = req.params.address;
+    let address = req.params.address;
     const addressLower = address.toLowerCase();
+
+    // Try to resolve ENS names to addresses
+    if (ensMapping[addressLower]) {
+      address = ensMapping[addressLower];
+    }
 
     // Validate address format
     if (!ethers.isAddress(address)) {
-      return res.status(400).json({ error: 'Invalid Ethereum address format' });
+      return res.status(400).json({ error: 'Invalid Ethereum address format. Use address (0x...) or ENS name (alice.eth, bob.eth, carol.eth)' });
     }
 
+    // Normalize address to lowercase for lookups
+    const addressResolved = ethers.getAddress(address).toLowerCase();
+
     // Check if we have demo data for this address
-    if (demoReputationData[addressLower]) {
-      const demoData = demoReputationData[addressLower];
+    if (demoReputationData[addressResolved]) {
+      const demoData = demoReputationData[addressResolved];
       return res.json({
-        address,
+        address: ethers.getAddress(address),
         score: demoData.score,
         scorePercent: (demoData.score / 10000 * 100).toFixed(1),
         credentialCount: demoData.credentialCount,
@@ -78,7 +93,7 @@ app.get('/api/reputation/:address', async (req, res) => {
       console.warn('⚠ Contracts not initialized, returning random data for', address);
       const randomScore = 4000 + Math.floor(Math.random() * 4000);
       return res.json({
-        address,
+        address: ethers.getAddress(address),
         score: randomScore,
         scorePercent: (randomScore / 10000 * 100).toFixed(1),
         credentialCount: Math.floor(Math.random() * 10),
@@ -380,6 +395,29 @@ app.get('/api/credentials/:credentialId/verify', (req, res) => {
     valid: true,
     credential,
     verifiedAt: new Date().toISOString(),
+  });
+});
+
+/**
+ * GET /
+ * Root endpoint - Welcome message
+ */
+app.get('/', (req, res) => {
+  res.json({
+    app: 'SkillBond MVP',
+    version: '1.0.0',
+    status: 'running',
+    message: 'Welcome to SkillBond backend API',
+    apiDocs: 'Available at /api/health',
+    endpoints: [
+      'GET /api/health',
+      'GET /api/reputation/:address',
+      'POST /api/projects',
+      'GET /api/projects/:id',
+      'POST /api/projects/:id/fund',
+      'POST /api/projects/:id/complete',
+      'POST /api/credentials/:id/mint',
+    ],
   });
 });
 
