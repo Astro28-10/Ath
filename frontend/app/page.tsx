@@ -44,6 +44,11 @@ export default function Home() {
               <h1 className="text-3xl font-bold">SKILLBOND</h1>
             </div>
             <div className="flex gap-2">
+              <Link href="/certificates">
+                <button className="border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition">
+                  📜 CERTIFICATES
+                </button>
+              </Link>
               <Link href="/leaderboard">
                 <button className="border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition">
                   LEADERBOARD
@@ -61,33 +66,33 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-24 px-8 border-b-4 border-black">
+      <section className="py-24 px-8 border-b-4 border-black" style={{background: 'linear-gradient(180deg, rgb(240, 249, 255) 0%, rgb(245, 243, 255) 50%, rgb(255, 255, 255) 100%)'}}>
         <div className="max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16">
             {/* Left */}
             <div>
               <div className="mb-12">
-                <span className="inline-block border-2 border-black px-4 py-2 text-xs tracking-widest font-bold mb-8">
-                  REPUTATION = CURRENCY
+                <span className="inline-block border-2 border-black px-4 py-2 text-xs tracking-widest font-bold mb-8 bg-yellow-100 hover:bg-yellow-200 transition">
+                  🚀 REPUTATION = CURRENCY
                 </span>
-                <h2 className="text-6xl lg:text-7xl font-bold leading-tight">
+                <h2 className="text-6xl lg:text-7xl font-bold leading-tight" style={{background: 'linear-gradient(90deg, rgb(37, 99, 235) 0%, rgb(147, 51, 234) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', color: 'transparent'}}>
                   Your track record is worth something.
                 </h2>
               </div>
 
-              <p className="text-lg leading-relaxed mb-8 max-w-lg">
+              <p className="text-lg leading-relaxed mb-8 max-w-lg text-gray-700">
                 Freelancers with proven history get instant discounts on escrow costs. Build verifiable credentials that follow you everywhere.
               </p>
 
               <div className="flex flex-col gap-3 mb-12">
-                <Link href="/client">
-                  <button className="w-full border-2 border-black px-8 py-3 text-sm font-bold tracking-widest hover:bg-black hover:text-white transition-all">
-                    HIRE TALENT →
+                <Link href="/search">
+                  <button className="w-full border-2 border-black px-8 py-3 text-sm font-bold tracking-widest hover:bg-black hover:text-white transition-all shadow-lg hover:shadow-xl">
+                    DISCOVER TALENT →
                   </button>
                 </Link>
-                <Link href="/freelancer">
-                  <button className="w-full border-2 border-black px-8 py-3 text-sm font-bold tracking-widest bg-black text-white hover:bg-white hover:text-black transition-all">
-                    CHECK STATS →
+                <Link href="/certificates">
+                  <button className="w-full border-2 border-black px-8 py-3 text-sm font-bold tracking-widest bg-black text-white hover:bg-white hover:text-black transition-all shadow-lg hover:shadow-xl">
+                    VIEW CERTIFICATES →
                   </button>
                 </Link>
               </div>
@@ -153,14 +158,14 @@ export default function Home() {
       </section>
 
       {/* Network Stats */}
-      <section className="py-16 px-8 border-b-4 border-black">
+      <section className="py-16 px-8 border-b-4 border-black" style={{background: 'linear-gradient(90deg, rgb(219, 234, 254) 0%, rgb(243, 232, 255) 50%, rgb(252, 231, 243) 100%)'}}>
         <div className="max-w-6xl mx-auto">
-          <p className="text-xs tracking-widest font-bold mb-8">NETWORK STATISTICS</p>
+          <p className="text-xs tracking-widest font-bold mb-8">📊 NETWORK STATISTICS</p>
           <div className="grid md:grid-cols-4 gap-6">
             {stats.map((stat, idx) => (
-              <div key={idx} className="border-2 border-black p-6 text-center">
-                <p className="text-3xl font-bold mb-2">{stat.value}</p>
-                <p className="text-xs tracking-widest">{stat.label}</p>
+              <div key={idx} className="border-2 border-black p-6 text-center bg-white hover:shadow-xl transition-all transform hover:scale-105">
+                <p className="text-4xl font-black mb-2 text-blue-600">{stat.value}</p>
+                <p className="text-xs tracking-widest font-bold text-gray-700">{stat.label}</p>
               </div>
             ))}
           </div>

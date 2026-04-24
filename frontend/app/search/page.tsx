@@ -188,9 +188,9 @@ export default function Search() {
                             <p className="font-bold">{rating}★</p>
                           </div>
                           <div className="md:text-right">
-                            <Link href="/client">
+                            <Link href={`/freelancer/${freelancer.address}`}>
                               <button className="w-full md:w-auto border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition-all">
-                                HIRE
+                                VIEW PROFILE
                               </button>
                             </Link>
                           </div>
