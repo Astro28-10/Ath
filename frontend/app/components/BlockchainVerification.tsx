@@ -23,7 +23,7 @@ export const BlockchainVerification: React.FC<BlockchainVerificationProps> = ({
   timestamp,
 }) => {
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'error'>('pending');
-  const [verificationDetails, setVerificationDetails] = useState<Record<string, unknown>>({});
+  const [verificationDetails, setVerificationDetails] = useState<Record<string, any>>({});
 
   const performVerification = () => {
     setVerificationStatus('pending');

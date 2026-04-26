@@ -1,230 +1,67 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
-export default function ProjectHistory() {
-  const [activeFilter, setActiveFilter] = useState('all');
-
+export default function HistoryPage() {
   const projects = [
-    {
-      id: 1,
-      title: 'E-commerce Platform',
-      freelancer: 'alice.eth',
-      amount: '2.5 ETH',
-      status: 'COMPLETED',
-      rating: 5.0,
-      duration: 14,
-      fundedDate: '2024-01-15',
-      completedDate: '2024-01-29',
-    },
-    {
-      id: 2,
-      title: 'Mobile App Redesign',
-      freelancer: 'bob_dev.eth',
-      amount: '1.8 ETH',
-      status: 'COMPLETED',
-      rating: 4.8,
-      duration: 7,
-      fundedDate: '2024-01-10',
-      completedDate: '2024-01-17',
-    },
-    {
-      id: 3,
-      title: 'REST API Development',
-      freelancer: 'carol.sol',
-      amount: '3.2 ETH',
-      status: 'ACTIVE',
-      rating: null,
-      duration: 21,
-      fundedDate: '2024-01-05',
-      completedDate: null,
-    },
-    {
-      id: 4,
-      title: 'Dashboard & Backend',
-      freelancer: 'dave.web3',
-      amount: '5.0 ETH',
-      status: 'IN_PROGRESS',
-      rating: null,
-      duration: 30,
-      fundedDate: '2023-12-28',
-      completedDate: null,
-    },
-    {
-      id: 5,
-      title: 'UI Components Library',
-      freelancer: 'eve_coder.eth',
-      amount: '2.1 ETH',
-      status: 'COMPLETED',
-      rating: 4.9,
-      duration: 10,
-      fundedDate: '2023-12-15',
-      completedDate: '2023-12-25',
-    },
+    { id: 'proj-001', title: 'DeFi Dashboard', client: 'TechCorp', amount: '2.5 ETH', status: 'COMPLETED', date: '2024-04-15', rating: 5 },
+    { id: 'proj-002', title: 'Smart Contract Audit', client: 'DeFi Labs', amount: '5.0 ETH', status: 'COMPLETED', date: '2024-03-28', rating: 5 },
+    { id: 'proj-003', title: 'NFT Marketplace', client: 'ArtDAO', amount: '3.5 ETH', status: 'IN PROGRESS', date: '2024-04-20', rating: 0 },
+    { id: 'proj-004', title: 'Token Vesting Contract', client: 'StartupXYZ', amount: '1.8 ETH', status: 'COMPLETED', date: '2024-02-10', rating: 4 },
+    { id: 'proj-005', title: 'API Integration', client: 'Enterprise Inc', amount: '3.0 ETH', status: 'DISPUTED', date: '2024-01-25', rating: 0 },
   ];
 
-  const filtered = projects.filter(p => {
-    if (activeFilter === 'active') return p.status === 'ACTIVE' || p.status === 'IN_PROGRESS';
-    if (activeFilter === 'completed') return p.status === 'COMPLETED';
-    return true;
-  });
-
-  const stats = {
-    total: projects.length,
-    completed: projects.filter(p => p.status === 'COMPLETED').length,
-    active: projects.filter(p => p.status === 'ACTIVE' || p.status === 'IN_PROGRESS').length,
-    totalSpent: '14.6 ETH',
-  };
-
   return (
-    <div className="min-h-screen bg-white text-black font-mono">
-      {/* Header */}
-      <header className="border-b-4 border-black">
-        <div className="max-w-6xl mx-auto px-8 py-6">
-          <Link href="/">
-            <button className="text-xs tracking-widest font-bold hover:underline mb-4">← BACK</button>
-          </Link>
-          <h1 className="text-3xl font-bold">PROJECT HISTORY</h1>
-          <p className="text-xs tracking-widest mt-2">YOUR HIRING TIMELINE</p>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <section className="py-12"><div className="section-container"><h1 className="text-4xl font-bold tracking-tight mb-2">Project History</h1><p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Timeline of all your projects</p></div></section>
 
-      <main className="max-w-6xl mx-auto px-8 py-16">
+      <main className="section-container flex-1 pb-16">
         {/* Stats */}
-        <div className="grid md:grid-cols-4 gap-6 mb-16">
+        <div className="grid md:grid-cols-4 gap-6 mb-12 stagger-children">
           {[
-            { label: 'TOTAL PROJECTS', value: stats.total },
-            { label: 'COMPLETED', value: stats.completed },
-            { label: 'ACTIVE', value: stats.active },
-            { label: 'TOTAL SPENT', value: stats.totalSpent },
+            { label: 'Total Projects', value: projects.length.toString() },
+            { label: 'Completed', value: projects.filter((p) => p.status === 'COMPLETED').length.toString() },
+            { label: 'In Progress', value: projects.filter((p) => p.status === 'IN PROGRESS').length.toString() },
+            { label: 'Total Earned', value: 'Ξ 15.8' },
           ].map((stat, idx) => (
-            <div key={idx} className="border-2 border-black p-6">
-              <p className="text-xs tracking-widest font-bold mb-2">{stat.label}</p>
-              <p className="text-3xl font-bold">{stat.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Filters */}
-        <div className="mb-12">
-          <p className="text-xs tracking-widest font-bold mb-4">FILTER</p>
-          <div className="flex gap-2">
-            {[
-              { label: 'ALL', value: 'all' },
-              { label: 'ACTIVE', value: 'active' },
-              { label: 'COMPLETED', value: 'completed' },
-            ].map((filter) => (
-              <button
-                key={filter.value}
-                onClick={() => setActiveFilter(filter.value)}
-                className={`px-4 py-2 border-2 text-xs font-bold tracking-widest transition-all ${
-                  activeFilter === filter.value
-                    ? 'border-black bg-black text-white'
-                    : 'border-black hover:bg-black hover:text-white'
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Projects */}
-        <div className="space-y-6">
-          {filtered.map((project, idx) => (
-            <div key={project.id} className="border-2 border-black">
-              {/* Header */}
-              <div className="border-b-2 border-black p-6 bg-gray-100">
-                <div className="grid md:grid-cols-4 gap-4 items-center">
-                  <div>
-                    <p className="text-xs tracking-widest font-bold mb-1">PROJECT</p>
-                    <h3 className="font-bold text-lg">{project.title}</h3>
-                  </div>
-                  <div>
-                    <p className="text-xs tracking-widest font-bold mb-1">FREELANCER</p>
-                    <p className="font-mono text-sm">{project.freelancer}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs tracking-widest font-bold mb-1">STATUS</p>
-                    <p className={`font-bold text-sm ${
-                      project.status === 'COMPLETED' ? 'text-green-700' : 'text-orange-700'
-                    }`}>
-                      {project.status}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs tracking-widest font-bold mb-1">BUDGET</p>
-                    <p className="font-bold">{project.amount}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Details */}
-              <div className="grid md:grid-cols-3 gap-6 p-6">
-                <div>
-                  <p className="text-xs tracking-widest font-bold mb-2">DURATION</p>
-                  <p className="text-lg font-bold">{project.duration} days</p>
-                </div>
-                <div>
-                  <p className="text-xs tracking-widest font-bold mb-2">FUNDED</p>
-                  <p className="text-sm">{project.fundedDate}</p>
-                </div>
-                {project.status === 'COMPLETED' && project.completedDate && (
-                  <div>
-                    <p className="text-xs tracking-widest font-bold mb-2">COMPLETED</p>
-                    <p className="text-sm">{project.completedDate}</p>
-                  </div>
-                )}
-                {project.rating && (
-                  <div>
-                    <p className="text-xs tracking-widest font-bold mb-2">YOUR RATING</p>
-                    <p className="text-lg font-bold">{project.rating}★</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              {project.status === 'COMPLETED' && (
-                <div className="border-t-2 border-black p-6 flex gap-2">
-                  <Link href={`/verify?id=${project.id}`}>
-                    <button className="flex-1 border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition-all">
-                      VIEW CREDENTIAL
-                    </button>
-                  </Link>
-                  <button className="flex-1 border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition-all">
-                    SHARE
-                  </button>
-                </div>
-              )}
+            <div key={idx} className="solid-card p-6 text-center">
+              <p className="text-2xl font-bold gradient-text">{stat.value}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
             </div>
           ))}
         </div>
 
         {/* Timeline */}
-        <div className="mt-16 pt-16 border-t-4 border-black">
-          <h2 className="text-2xl font-bold mb-8">TIMELINE</h2>
-          <div className="space-y-6">
-            {projects
-              .sort((a, b) => new Date(b.fundedDate).getTime() - new Date(a.fundedDate).getTime())
-              .slice(0, 5)
-              .map((project, idx) => (
-                <div key={project.id} className="pl-8 border-l-2 border-black">
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="w-4 h-4 bg-black rounded-full ml-[-14px]" />
-                    <p className="text-xs tracking-widest font-bold">{project.fundedDate}</p>
-                  </div>
-                  <p className="ml-2 font-bold">{project.title} • {project.amount}</p>
+        <div className="space-y-4">
+          {projects.map((p) => (
+            <div key={p.id} className="solid-card p-6">
+              <div className="grid md:grid-cols-5 gap-4 items-center">
+                <div className="md:col-span-2">
+                  <h3 className="font-semibold">{p.title}</h3>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Client: {p.client}</p>
                 </div>
-              ))}
-          </div>
+                <div>
+                  <p className="font-semibold">{p.amount}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.date}</p>
+                </div>
+                <div>
+                  <span className={`badge ${p.status === 'COMPLETED' ? 'badge-emerald' : p.status === 'IN PROGRESS' ? 'badge-blue' : 'badge-rose'}`}>
+                    {p.status}
+                  </span>
+                </div>
+                <div className="md:text-right">
+                  {p.rating > 0 && <p className="text-sm" style={{ color: 'var(--accent-amber)' }}>{'★'.repeat(p.rating)}{'☆'.repeat(5 - p.rating)}</p>}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t-4 border-black mt-16 py-8 px-8 text-center">
-        <p className="text-xs tracking-widest">PROJECT HISTORY</p>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { v4 as uuidv4 } from 'uuid';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 interface Certificate {
   id: string;
@@ -13,122 +15,87 @@ interface Certificate {
 }
 
 const mockCertificates: Certificate[] = [
-  {
-    id: uuidv4(),
-    freelancer: 'alice.eth',
-    issueDate: '2024-04-20',
-    reputation: 95,
-    credentials: 5,
-  },
-  {
-    id: uuidv4(),
-    freelancer: 'bob.eth',
-    issueDate: '2024-04-19',
-    reputation: 72,
-    credentials: 3,
-  },
-  {
-    id: uuidv4(),
-    freelancer: 'carol.eth',
-    issueDate: '2024-04-18',
-    reputation: 40,
-    credentials: 1,
-  },
+  { id: uuidv4(), freelancer: 'alice.eth', issueDate: '2024-04-20', reputation: 95, credentials: 5 },
+  { id: uuidv4(), freelancer: 'bob.eth', issueDate: '2024-04-19', reputation: 72, credentials: 3 },
+  { id: uuidv4(), freelancer: 'carol.eth', issueDate: '2024-04-18', reputation: 40, credentials: 1 },
 ];
 
 export default function CertificatesPage() {
   const [certificates] = useState(mockCertificates);
 
   return (
-    <div className="min-h-screen bg-white text-black font-mono">
-      {/* Header */}
-      <header className="border-b-4 border-black sticky top-0 bg-white z-50">
-        <div className="max-w-6xl mx-auto px-8 py-6">
-          <Link href="/">
-            <button className="text-xs tracking-widest font-bold hover:underline mb-4">← HOME</button>
-          </Link>
-          <h1 className="text-3xl font-bold">CERTIFICATES</h1>
-          <p className="text-xs tracking-widest mt-2 text-gray-600">BLOCKCHAIN-VERIFIED CREDENTIALS</p>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
 
-      <main className="max-w-6xl mx-auto px-8 py-12">
-        {/* Info Box */}
-        <div className="border-2 border-black p-6 mb-12" style={{background: 'linear-gradient(90deg, rgb(240, 249, 255) 0%, rgb(245, 243, 255) 100%)'}}>
-          <h2 className="font-bold text-lg mb-3">📜 WHAT ARE SKILLBOND CERTIFICATES?</h2>
-          <p className="text-sm text-gray-700 mb-3">
-            SkillBond certificates are tamper-proof, blockchain-verified credentials that prove a freelancer's reputation and achievements.
-            Each certificate is permanently recorded on the Polygon Amoy blockchain and can be publicly verified by anyone.
-          </p>
-          <p className="text-xs text-gray-600">
-            Certificates cannot be forged or modified - they are immutable proof of work excellence.
+      <section className="py-12">
+        <div className="section-container">
+          <h1 className="text-4xl font-bold tracking-tight mb-2">Certificates</h1>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Blockchain-verified credentials</p>
+        </div>
+      </section>
+
+      <main className="section-container flex-1 pb-16">
+        {/* Info */}
+        <div className="solid-card p-6 mb-10" style={{ borderColor: 'rgba(59,130,246,0.2)' }}>
+          <h2 className="font-semibold text-lg mb-2">What are SkillBond Certificates?</h2>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Tamper-proof, blockchain-verified credentials that prove a freelancer&apos;s reputation. Permanently recorded on Polygon Amoy — immutable proof of work excellence.
           </p>
         </div>
 
-        {/* Certificates Grid */}
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold">ISSUED CERTIFICATES ({certificates.length})</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {certificates.map((cert) => (
-              <Link key={cert.id} href={`/certificate/${cert.id}`}>
-                <div className="border-3 border-black p-6 cursor-pointer hover:shadow-xl transition-all transform hover:scale-105" style={{background: 'linear-gradient(135deg, rgb(254, 252, 232) 0%, rgb(255, 255, 255) 100%)'}}>
-                  <div className="text-3xl mb-4">📜</div>
-                  <h3 className="text-lg font-bold mb-2">{cert.freelancer}</h3>
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Reputation:</span>
-                      <span className="font-bold text-blue-600">{cert.reputation}%</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Credentials:</span>
-                      <span className="font-bold text-purple-600">{cert.credentials}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Issued:</span>
-                      <span className="font-bold">{cert.issueDate}</span>
-                    </div>
+        {/* Grid */}
+        <h2 className="text-xl font-bold mb-6">Issued Certificates ({certificates.length})</h2>
+        <div className="grid md:grid-cols-3 gap-6 mb-16">
+          {certificates.map((cert) => (
+            <Link key={cert.id} href={`/certificate/${cert.id}`}>
+              <div className="solid-card p-6 group cursor-pointer">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                    <span className="text-lg">📜</span>
                   </div>
-                  <div className="border-t-2 border-gray-300 pt-3">
-                    <p className="text-xs text-gray-600 font-mono truncate">{cert.id}</p>
-                  </div>
-                  <button className="w-full mt-4 border-2 border-black py-2 font-bold text-xs tracking-widest hover:bg-black hover:text-white transition-all">
-                    VIEW & VERIFY
-                  </button>
+                  <h3 className="text-lg font-bold">{cert.freelancer}</h3>
                 </div>
-              </Link>
-            ))}
-          </div>
+                <div className="space-y-2 text-sm mb-4">
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-muted)' }}>Reputation</span>
+                    <span className="font-semibold" style={{ color: 'var(--accent-blue-light)' }}>{cert.reputation}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-muted)' }}>Credentials</span>
+                    <span className="font-semibold" style={{ color: 'var(--accent-violet-light)' }}>{cert.credentials}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-muted)' }}>Issued</span>
+                    <span className="font-semibold">{cert.issueDate}</span>
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: '12px' }}>
+                  <p className="text-xs truncate" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{cert.id}</p>
+                </div>
+                <button className="btn-secondary w-full mt-4" style={{ fontSize: '12px', padding: '8px' }}>View & Verify</button>
+              </div>
+            </Link>
+          ))}
         </div>
 
-        {/* Features */}
-        <div className="mt-16 border-t-4 border-black pt-12">
-          <h2 className="text-2xl font-bold mb-8">WHY BLOCKCHAIN CERTIFICATES?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="border-2 border-black p-6">
-              <p className="text-3xl mb-3">🔒</p>
-              <h3 className="font-bold mb-2">IMMUTABLE</h3>
-              <p className="text-sm text-gray-700">
-                Once issued, certificates cannot be modified or deleted. Permanent proof of achievement.
-              </p>
+        {/* Why */}
+        <h2 className="text-xl font-bold mb-6">Why Blockchain Certificates?</h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { icon: '🔒', title: 'Immutable', desc: 'Cannot be modified or deleted once issued.' },
+            { icon: '🌍', title: 'Publicly Verifiable', desc: 'Anyone can verify using PolygonScan.' },
+            { icon: '🎯', title: 'Decentralized', desc: 'No single point of failure.' },
+          ].map((f, idx) => (
+            <div key={idx} className="solid-card p-6">
+              <span className="text-2xl mb-3 block">{f.icon}</span>
+              <h3 className="font-semibold mb-2">{f.title}</h3>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{f.desc}</p>
             </div>
-            <div className="border-2 border-black p-6">
-              <p className="text-3xl mb-3">🌍</p>
-              <h3 className="font-bold mb-2">PUBLICLY VERIFIABLE</h3>
-              <p className="text-sm text-gray-700">
-                Anyone can verify certificates using PolygonScan without creating an account.
-              </p>
-            </div>
-            <div className="border-2 border-black p-6">
-              <p className="text-3xl mb-3">🎯</p>
-              <h3 className="font-bold mb-2">NO SINGLE POINT OF FAILURE</h3>
-              <p className="text-sm text-gray-700">
-                Data is stored on decentralized blockchain, not on a single company's servers.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

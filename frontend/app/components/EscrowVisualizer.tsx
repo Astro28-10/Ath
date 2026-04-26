@@ -129,7 +129,7 @@ export const EscrowVisualizer: React.FC<EscrowVisualizerProps> = ({ calculation 
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={({ name, value }) => `${name}: ${(value / 1e18).toFixed(3)} Ξ`}
+              label={({ name, value }) => `${name}: ${(Number(value) / 1e18).toFixed(3)} Ξ`}
               outerRadius={100}
               fill="#8884d8"
               dataKey="value"
@@ -139,7 +139,7 @@ export const EscrowVisualizer: React.FC<EscrowVisualizerProps> = ({ calculation 
               ))}
             </Pie>
             <Tooltip
-              formatter={(value) => `${(value / 1e18).toFixed(4)} ETH`}
+              formatter={(value) => `${(Number(value) / 1e18).toFixed(4)} ETH`}
               contentStyle={{
                 backgroundColor: '#1f2937',
                 border: '2px solid #000',

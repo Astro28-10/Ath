@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import { EscrowVisualizer } from '../components/EscrowVisualizer';
 import { ReputationRatingVisualizer } from '../components/ReputationRatingVisualizer';
 import { TimelineVisualizer } from '../components/TimelineVisualizer';
@@ -15,23 +17,53 @@ interface EscrowData {
   baseAmount: number;
   escrowCost: number;
   finalAmount: number;
-  breakdown: Record<string, unknown>;
-  percentages: Record<string, string>;
+  breakdown: {
+    clientDiscount: number;
+    freelancerDiscount: number;
+    totalDiscount: number;
+  };
+  percentages: {
+    escrowCostPercent: string;
+    discountApplied: string;
+    clientRepPercent: string;
+    freelancerRepPercent: string;
+  };
 }
 
 interface ReputationImpactData {
   outcome: string;
   reason: string;
-  changes: Record<string, number>;
-  before: Record<string, number>;
-  after: Record<string, number>;
-  percentageChange: Record<string, string>;
+  changes: {
+    clientRepChange: number;
+    freelancerRepChange: number;
+  };
+  before: {
+    clientReputation: number;
+    freelancerReputation: number;
+  };
+  after: {
+    clientReputation: number;
+    freelancerReputation: number;
+  };
+  percentageChange: {
+    clientChangePercent: string;
+    freelancerChangePercent: string;
+  };
 }
 
 interface RatingImpactData {
-  before: Record<string, unknown>;
-  after: Record<string, unknown>;
-  change: Record<string, string>;
+  before: {
+    avgRating: string;
+    totalProjects: number;
+  };
+  after: {
+    avgRating: string;
+    totalProjects: number;
+  };
+  change: {
+    difference: string;
+    percentChange: string;
+  };
   impact: string;
 }
 
@@ -54,21 +86,16 @@ const STEP_ORDER: Step[] = ['select', 'review', 'create', 'fund', 'deliver', 'ap
 export default function SimulatePage() {
   const [currentStep, setCurrentStep] = useState<Step>('select');
   const [selectedScenario, setSelectedScenario] = useState<keyof typeof DEMO_SCENARIOS>('alice_bob');
-  const [outcome, setOutcome] = useState<'completed' | 'disputed_favorable' | 'disputed_unfavorable' | 'refunded'>(
-    'completed'
-  );
+  const [outcome, setOutcome] = useState<'completed' | 'disputed_favorable' | 'disputed_unfavorable' | 'refunded'>('completed');
   const [clientRating, setClientRating] = useState(5);
   const [activeTab, setActiveTab] = useState<'certificate' | 'reputation' | 'timeline' | 'blockchain'>('certificate');
   const [showDisputeSimulator, setShowDisputeSimulator] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Simulation results
   const [escrowData, setEscrowData] = useState<EscrowData | null>(null);
   const [reputationImpact, setReputationImpact] = useState<ReputationImpactData | null>(null);
   const [ratingImpact, setRatingImpact] = useState<RatingImpactData | null>(null);
-  const [timeline, setTimeline] = useState<Array<Record<string, unknown>>>([]);
+  const [timeline, setTimeline] = useState<any[]>([]);
   const [certificateData, setCertificateData] = useState<Record<string, unknown> | null>(null);
 
   const scenario = DEMO_SCENARIOS[selectedScenario];
@@ -76,7 +103,6 @@ export default function SimulatePage() {
   const goToStep = (step: Step) => {
     const currentIndex = STEP_ORDER.indexOf(currentStep);
     const targetIndex = STEP_ORDER.indexOf(step);
-
     if (targetIndex <= currentIndex) {
       setCurrentStep(step);
       setError(null);
@@ -85,39 +111,54 @@ export default function SimulatePage() {
 
   const nextStep = async () => {
     setError(null);
-
-    if (currentStep === 'select') {
-      setCurrentStep('review');
-    } else if (currentStep === 'review') {
-      setCurrentStep('create');
-    } else if (currentStep === 'create') {
-      // Run escrow calculation
-      await calculateEscrow();
-    } else if (currentStep === 'fund') {
-      setCurrentStep('deliver');
-    } else if (currentStep === 'deliver') {
-      setCurrentStep('approve');
-    } else if (currentStep === 'approve') {
-      // Run full simulation
-      await runFullSimulation();
-    }
+    if (currentStep === 'select') setCurrentStep('review');
+    else if (currentStep === 'review') setCurrentStep('create');
+    else if (currentStep === 'create') await calculateEscrow();
+    else if (currentStep === 'fund') setCurrentStep('deliver');
+    else if (currentStep === 'deliver') setCurrentStep('approve');
+    else if (currentStep === 'approve') await runFullSimulation();
   };
 
   const calculateEscrow = async () => {
     setLoading(true);
     try {
       const amount = Math.floor(Number(scenario.project.amount) * 1e18);
-      const response = await axios.post(`${API_BASE}/simulate/calculate-escrow`, {
-        baseAmount: amount,
-        clientReputation: scenario.client.reputation,
-        freelancerReputation: scenario.freelancer.reputation,
-      });
-      setEscrowData(response.data.data);
+      try {
+        const response = await axios.post(`${API_BASE}/simulate/calculate-escrow`, {
+          baseAmount: amount,
+          clientReputation: scenario.client.reputation,
+          freelancerReputation: scenario.freelancer.reputation,
+        });
+        setEscrowData(response.data.data);
+      } catch {
+        // Fallback: calculate locally when backend is offline
+        const clientRep = scenario.client.reputation;
+        const freelancerRep = scenario.freelancer.reputation;
+        const combinedRep = (clientRep + freelancerRep) / 2;
+        const discountBps = Math.floor(combinedRep / 333); // 0-30% discount based on reputation
+        const escrowCost = Math.floor(amount * discountBps / 100);
+        const finalAmount = amount - escrowCost;
+        setEscrowData({
+          baseAmount: amount,
+          escrowCost,
+          finalAmount,
+          breakdown: {
+            clientDiscount: Math.floor(clientRep / 333),
+            freelancerDiscount: Math.floor(freelancerRep / 333),
+            totalDiscount: discountBps,
+          },
+          percentages: {
+            escrowCostPercent: (escrowCost / amount * 100).toFixed(2),
+            discountApplied: (discountBps).toFixed(2),
+            clientRepPercent: (clientRep / 100).toFixed(1),
+            freelancerRepPercent: (freelancerRep / 100).toFixed(1),
+          },
+        });
+      }
       setCurrentStep('fund');
     } catch (err) {
       const message = axios.isAxiosError(err) ? err.response?.data?.error || err.message : String(err);
       setError(message);
-      console.error('Escrow calculation error:', err);
     } finally {
       setLoading(false);
     }
@@ -129,32 +170,85 @@ export default function SimulatePage() {
       const amount = Math.floor(Number(scenario.project.amount) * 1e18);
 
       // Reputation impact
-      const repResponse = await axios.post(`${API_BASE}/simulate/reputation-impact`, {
-        clientReputation: scenario.client.reputation,
-        freelancerReputation: scenario.freelancer.reputation,
-        projectAmount: amount,
-        outcome,
-      });
-      setReputationImpact(repResponse.data.data);
+      let repData: ReputationImpactData;
+      try {
+        const repResponse = await axios.post(`${API_BASE}/simulate/reputation-impact`, {
+          clientReputation: scenario.client.reputation,
+          freelancerReputation: scenario.freelancer.reputation,
+          projectAmount: amount,
+          outcome,
+        });
+        repData = repResponse.data.data;
+      } catch {
+        // Fallback: mock reputation impact
+        const clientRep = scenario.client.reputation;
+        const freelancerRep = scenario.freelancer.reputation;
+        const isGood = outcome === 'completed' || outcome === 'disputed_favorable';
+        const change = isGood ? 500 : -300;
+        repData = {
+          outcome,
+          reason: isGood ? 'Project completed successfully' : 'Project had issues',
+          changes: { clientRepChange: Math.floor(change * 0.8), freelancerRepChange: change },
+          before: { clientReputation: clientRep, freelancerReputation: freelancerRep },
+          after: {
+            clientReputation: Math.min(10000, Math.max(0, clientRep + Math.floor(change * 0.8))),
+            freelancerReputation: Math.min(10000, Math.max(0, freelancerRep + change)),
+          },
+          percentageChange: {
+            clientChangePercent: ((change * 0.8) / 100).toFixed(1),
+            freelancerChangePercent: (change / 100).toFixed(1),
+          },
+        };
+      }
+      setReputationImpact(repData);
 
       // Rating impact
-      const ratingResponse = await axios.post(`${API_BASE}/simulate/rating-impact`, {
-        currentAvgRating: scenario.freelancer.rating,
-        projectRating: clientRating,
-        totalProjects: scenario.freelancer.projects,
-      });
-      setRatingImpact(ratingResponse.data.data);
+      let ratingData: RatingImpactData;
+      try {
+        const ratingResponse = await axios.post(`${API_BASE}/simulate/rating-impact`, {
+          currentAvgRating: scenario.freelancer.rating,
+          projectRating: clientRating,
+          totalProjects: scenario.freelancer.projects,
+        });
+        ratingData = ratingResponse.data.data;
+      } catch {
+        // Fallback: mock rating impact
+        const oldRating = scenario.freelancer.rating;
+        const totalProjects = scenario.freelancer.projects;
+        const newRating = ((oldRating * totalProjects) + clientRating) / (totalProjects + 1);
+        ratingData = {
+          before: { avgRating: oldRating.toFixed(2), totalProjects },
+          after: { avgRating: newRating.toFixed(2), totalProjects: totalProjects + 1 },
+          change: {
+            difference: (newRating - oldRating).toFixed(3),
+            percentChange: (((newRating - oldRating) / oldRating) * 100).toFixed(2),
+          },
+          impact: newRating > oldRating ? 'Positive — rating improved' : newRating < oldRating ? 'Negative — rating decreased' : 'Neutral — no change',
+        };
+      }
+      setRatingImpact(ratingData);
 
       // Timeline
-      const timelineResponse = await axios.post(`${API_BASE}/simulate/timeline`, {
-        durationDays: scenario.project.durationDays,
-      });
-      setTimeline(timelineResponse.data.data);
+      try {
+        const timelineResponse = await axios.post(`${API_BASE}/simulate/timeline`, {
+          durationDays: scenario.project.durationDays,
+        });
+        setTimeline(timelineResponse.data.data);
+      } catch {
+        // Fallback: mock timeline
+        const d = scenario.project.durationDays;
+        setTimeline([
+          { stage: 1, name: 'Work Order Created', description: 'Client and freelancer agree on terms', daysFromStart: 0, color: 'blue', icon: '📋' },
+          { stage: 2, name: 'Funds Locked in Escrow', description: 'Client deposits funds into smart contract', daysFromStart: 0, color: 'yellow', icon: '🔒' },
+          { stage: 3, name: 'Work in Progress', description: 'Freelancer begins project development', daysFromStart: 1, color: 'purple', icon: '⚡' },
+          { stage: 4, name: 'Deliverables Submitted', description: 'Freelancer submits completed work', daysFromStart: d, color: 'blue', icon: '📦' },
+          { stage: 5, name: 'Review Period', description: 'Client reviews and approves or disputes', daysFromStart: d, color: 'orange', icon: '🔍' },
+          { stage: 6, name: 'Project Completed', description: 'Funds released and credential minted', daysFromStart: d + 2, color: 'green', icon: '✅' },
+        ]);
+      }
 
-      // Generate certificate
       const certId = `cert-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const certHash = `0x${Math.random().toString(16).substr(2)}${Math.random().toString(16).substr(2)}`;
-
       setCertificateData({
         certificateId: certId,
         freelancerName: scenario.freelancer.name,
@@ -164,15 +258,13 @@ export default function SimulatePage() {
         projectAmount: scenario.project.amount,
         issueDate: new Date().toISOString(),
         reputationBefore: scenario.freelancer.reputation,
-        reputationAfter: repResponse.data.data.after.freelancerReputation,
+        reputationAfter: repData.after.freelancerReputation,
         hash: certHash,
       });
-
       setCurrentStep('complete');
     } catch (err) {
       const message = axios.isAxiosError(err) ? err.response?.data?.error || err.message : String(err);
       setError(message);
-      console.error('Simulation error:', err);
     } finally {
       setLoading(false);
     }
@@ -189,523 +281,321 @@ export default function SimulatePage() {
     setActiveTab('certificate');
   };
 
+  const currentIndex = STEP_ORDER.indexOf(currentStep);
+
   return (
-    <div className="min-h-screen bg-white text-black font-mono">
-      {/* Header */}
-      <header className="border-b-4 border-black sticky top-0 bg-white z-50">
-        <div className="max-w-7xl mx-auto px-8 py-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <div className="w-12 h-12 bg-black flex items-center justify-center border-2 border-black hover:bg-white hover:text-black transition cursor-pointer">
-                  <span className="text-white hover:text-black text-lg font-bold">SB</span>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+
+      <div className="section-container py-8 flex-1">
+        {/* Progress Bar */}
+        <div className="mb-10">
+          <div className="flex gap-1.5 overflow-x-auto pb-3">
+            {STEP_ORDER.map((step, idx) => {
+              const isActive = step === currentStep;
+              const isCompleted = idx < currentIndex;
+              const isDisabled = idx > currentIndex;
+              return (
+                <div key={step} className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => goToStep(step)}
+                    disabled={isDisabled}
+                    className="flex-shrink-0 w-10 h-10 rounded-lg text-xs font-semibold flex items-center justify-center transition-all duration-200"
+                    style={{
+                      background: isActive ? 'var(--accent-blue)' : isCompleted ? 'rgba(16,185,129,0.15)' : 'var(--bg-elevated)',
+                      color: isActive ? 'white' : isCompleted ? 'var(--accent-emerald)' : 'var(--text-muted)',
+                      border: `1px solid ${isActive ? 'var(--accent-blue)' : isCompleted ? 'rgba(16,185,129,0.3)' : 'var(--border-default)'}`,
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                      opacity: isDisabled ? 0.4 : 1,
+                    }}
+                  >
+                    {isCompleted ? '✓' : WORKFLOW_STEPS[step].number}
+                  </button>
+                  {idx < STEP_ORDER.length - 1 && (
+                    <div
+                      className="w-6 h-0.5 rounded-full"
+                      style={{ background: isCompleted ? 'var(--accent-emerald)' : 'var(--border-default)' }}
+                    />
+                  )}
                 </div>
-              </Link>
-              <h1 className="text-3xl font-bold">SKILLBOND</h1>
-            </div>
-            <div className="flex gap-2">
-              <Link href="/">
-                <button className="border-2 border-black px-4 py-2 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition">
-                  HOME
-                </button>
-              </Link>
-              <Link href="/simulate">
-                <button className="border-4 border-black px-4 py-2 text-xs font-bold tracking-widest bg-black text-white">
-                  SIMULATOR
-                </button>
-              </Link>
-            </div>
+              );
+            })}
           </div>
-          <p className="text-xs tracking-widest">WORKFLOW SIMULATOR FOR JUDGES</p>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-8 py-12">
-        {/* Workflow Progress */}
-        <div className="mb-12">
-          <div className="flex gap-2 overflow-x-auto pb-4">
-            {STEP_ORDER.map((step, idx) => (
-              <div key={step} className="flex items-center gap-2">
-                <button
-                  onClick={() => goToStep(step)}
-                  disabled={STEP_ORDER.indexOf(step) > STEP_ORDER.indexOf(currentStep)}
-                  className={`flex-shrink-0 w-12 h-12 border-2 border-black font-bold text-sm flex items-center justify-center transition ${
-                    step === currentStep
-                      ? 'bg-black text-white border-4'
-                      : STEP_ORDER.indexOf(step) < STEP_ORDER.indexOf(currentStep)
-                        ? 'bg-green-100 border-black cursor-pointer'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {STEP_ORDER.indexOf(step) < STEP_ORDER.indexOf(currentStep) ? 'OK' : WORKFLOW_STEPS[step as Step].number}
-                </button>
-                {idx < STEP_ORDER.length - 1 && (
-                  <div
-                    className={`w-8 h-1 ${
-                      STEP_ORDER.indexOf(step) < STEP_ORDER.indexOf(currentStep)
-                        ? 'bg-green-400'
-                        : 'bg-gray-300'
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4">
-            <p className="text-sm font-bold tracking-widest">{WORKFLOW_STEPS[currentStep as Step].label}</p>
-            <p className="text-xs text-gray-600">Step {WORKFLOW_STEPS[currentStep as Step].number} of 7</p>
+          <div className="mt-3">
+            <p className="text-sm font-semibold">{WORKFLOW_STEPS[currentStep].label}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Step {WORKFLOW_STEPS[currentStep].number} of 7</p>
           </div>
         </div>
 
         {error && (
-          <div className="border-2 border-red-500 p-4 bg-red-50 mb-8">
-            <p className="text-sm font-bold text-red-700">ERROR: {error}</p>
+          <div className="solid-card p-4 mb-8" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)' }}>
+            <p className="text-sm font-semibold" style={{ color: 'var(--accent-rose)' }}>Error: {error}</p>
           </div>
         )}
 
-        {/* Step: Select Scenario */}
+        {/* Step: Select */}
         {currentStep === 'select' && (
-          <div className="space-y-8">
-            <div className="border-4 border-black p-8 bg-blue-50">
-              <h2 className="text-2xl font-bold mb-2 tracking-widest">SELECT A SCENARIO</h2>
-              <p className="text-sm text-gray-600 mb-6">
-                Choose a pre-configured project scenario to simulate. Each demonstrates different reputation levels and project types.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-6 animate-fade-in">
+            <div className="solid-card p-8" style={{ borderColor: 'rgba(59,130,246,0.2)' }}>
+              <h2 className="text-2xl font-bold mb-2 tracking-tight">Select a Scenario</h2>
+              <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Choose a pre-configured project to simulate different reputation levels.</p>
+              <div className="grid md:grid-cols-3 gap-4">
                 {Object.entries(DEMO_SCENARIOS).map(([id, scen]) => (
                   <button
                     key={id}
                     onClick={() => setSelectedScenario(id as keyof typeof DEMO_SCENARIOS)}
-                    className={`border-2 border-black p-6 text-left transition ${
-                      selectedScenario === id
-                        ? 'bg-black text-white border-4'
-                        : 'bg-white hover:bg-gray-50 border-black'
-                    }`}
+                    className="p-5 rounded-lg text-left transition-all duration-200"
+                    style={{
+                      background: selectedScenario === id ? 'rgba(59,130,246,0.1)' : 'var(--bg-elevated)',
+                      border: `1px solid ${selectedScenario === id ? 'var(--accent-blue)' : 'var(--border-default)'}`,
+                      boxShadow: selectedScenario === id ? '0 0 20px var(--glow-blue)' : 'none',
+                    }}
                   >
-                    <p className="font-bold tracking-widest mb-2">{scen.name}</p>
-                    <p className={`text-xs ${selectedScenario === id ? 'text-gray-200' : 'text-gray-600'} mb-3 line-clamp-2`}>
-                      {scen.description}
-                    </p>
-                    <div className={`text-xs space-y-1 ${selectedScenario === id ? 'text-gray-100' : 'text-gray-700'}`}>
-                      <p>
-                        <strong>Budget:</strong> {scen.project.amount} ETH
-                      </p>
-                      <p>
-                        <strong>Duration:</strong> {scen.project.durationDays} days
-                      </p>
+                    <p className="font-semibold mb-1">{scen.name}</p>
+                    <p className="text-xs mb-3 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{scen.description}</p>
+                    <div className="text-xs space-y-1" style={{ color: 'var(--text-muted)' }}>
+                      <p>Budget: {scen.project.amount} ETH</p>
+                      <p>Duration: {scen.project.durationDays} days</p>
                     </div>
                   </button>
                 ))}
               </div>
             </div>
-
-            <button
-              onClick={nextStep}
-              className="w-full border-4 border-black px-8 py-4 text-sm font-bold tracking-widest bg-black text-white hover:bg-white hover:text-black transition"
-            >
-              CONTINUE TO REVIEW
-            </button>
+            <button onClick={nextStep} className="btn-primary w-full" style={{ padding: '16px' }}>Continue to Review</button>
           </div>
         )}
 
-        {/* Step: Review Project */}
+        {/* Step: Review */}
         {currentStep === 'review' && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Client */}
-              <div className="border-4 border-black p-6">
-                <p className="text-xs tracking-widest font-bold text-gray-600 mb-3">CLIENT</p>
-                <h3 className="text-2xl font-bold mb-4">{scenario.client.name}</h3>
-
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <p className="font-bold text-gray-600">Reputation</p>
-                    <p className={`text-lg font-black ${getReputationColor(scenario.client.reputation)}`}>
-                      {(scenario.client.reputation / 100).toFixed(1)}% ({getReputationLabel(scenario.client.reputation)})
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-600">Average Rating</p>
-                    <p className="text-lg font-black">{scenario.client.rating}/5.0</p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-600">Projects Completed</p>
-                    <p className="text-lg font-black">{scenario.client.projects}</p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-600">Address</p>
-                    <p className="font-mono text-xs">{formatAddress(scenario.client.address)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Freelancer */}
-              <div className="border-4 border-black p-6">
-                <p className="text-xs tracking-widest font-bold text-gray-600 mb-3">FREELANCER</p>
-                <h3 className="text-2xl font-bold mb-4">{scenario.freelancer.name}</h3>
-
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <p className="font-bold text-gray-600">Reputation</p>
-                    <p className={`text-lg font-black ${getReputationColor(scenario.freelancer.reputation)}`}>
-                      {(scenario.freelancer.reputation / 100).toFixed(1)}% ({getReputationLabel(scenario.freelancer.reputation)})
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-600">Average Rating</p>
-                    <p className="text-lg font-black">{scenario.freelancer.rating}/5.0</p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-600">Projects Completed</p>
-                    <p className="text-lg font-black">{scenario.freelancer.projects}</p>
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-600">Address</p>
-                    <p className="font-mono text-xs">{formatAddress(scenario.freelancer.address)}</p>
+          <div className="space-y-6 animate-fade-in">
+            <div className="grid md:grid-cols-2 gap-6">
+              {[
+                { label: 'Client', data: scenario.client },
+                { label: 'Freelancer', data: scenario.freelancer },
+              ].map((party) => (
+                <div key={party.label} className="solid-card p-6">
+                  <p className="label" style={{ color: 'var(--text-muted)' }}>{party.label}</p>
+                  <h3 className="text-xl font-bold mb-4">{party.data.name}</h3>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span style={{ color: 'var(--text-muted)' }}>Reputation</span>
+                      <span className={`font-semibold ${getReputationColor(party.data.reputation)}`}>
+                        {(party.data.reputation / 100).toFixed(1)}% ({getReputationLabel(party.data.reputation)})
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: 'var(--text-muted)' }}>Rating</span>
+                      <span className="font-semibold">{party.data.rating}/5.0</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: 'var(--text-muted)' }}>Projects</span>
+                      <span className="font-semibold">{party.data.projects}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span style={{ color: 'var(--text-muted)' }}>Address</span>
+                      <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{formatAddress(party.data.address)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
 
-            {/* Project Details */}
-            <div className="border-4 border-black p-6">
-              <p className="text-xs tracking-widest font-bold text-gray-600 mb-3">PROJECT</p>
-              <h3 className="text-2xl font-bold mb-4">{scenario.project.title}</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                <div>
-                  <p className="font-bold text-gray-600 mb-1">Description</p>
-                  <p>{scenario.project.description}</p>
-                </div>
-
+            <div className="solid-card p-6">
+              <p className="label" style={{ color: 'var(--text-muted)' }}>Project</p>
+              <h3 className="text-xl font-bold mb-4">{scenario.project.title}</h3>
+              <div className="grid md:grid-cols-2 gap-6 text-sm">
+                <p style={{ color: 'var(--text-secondary)' }}>{scenario.project.description}</p>
                 <div className="space-y-3">
-                  <div>
-                    <p className="font-bold text-gray-600">Budget</p>
-                    <p className="text-xl font-black">{scenario.project.amount} ETH</p>
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-muted)' }}>Budget</span>
+                    <span className="font-bold text-lg">{scenario.project.amount} ETH</span>
                   </div>
-                  <div>
-                    <p className="font-bold text-gray-600">Duration</p>
-                    <p className="text-xl font-black">{scenario.project.durationDays} Days</p>
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <p className="font-bold text-gray-600 mb-2">Skills Required</p>
-                  <div className="flex flex-wrap gap-2">
-                    {scenario.project.skills.map(skill => (
-                      <span key={skill} className="border border-black px-3 py-1 text-xs">
-                        {skill}
-                      </span>
-                    ))}
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text-muted)' }}>Duration</span>
+                    <span className="font-bold text-lg">{scenario.project.durationDays} Days</span>
                   </div>
                 </div>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-4">
+                {scenario.project.skills.map((skill) => (
+                  <span key={skill} className="badge badge-blue">{skill}</span>
+                ))}
               </div>
             </div>
 
             <div className="flex gap-4">
-              <button
-                onClick={() => setCurrentStep('select')}
-                className="flex-1 border-2 border-black px-8 py-3 text-sm font-bold tracking-widest hover:bg-black hover:text-white transition"
-              >
-                BACK
-              </button>
-              <button
-                onClick={nextStep}
-                className="flex-1 border-4 border-black px-8 py-3 text-sm font-bold tracking-widest bg-black text-white hover:bg-white hover:text-black transition"
-              >
-                CONTINUE
-              </button>
+              <button onClick={() => setCurrentStep('select')} className="btn-secondary flex-1">Back</button>
+              <button onClick={nextStep} className="btn-primary flex-1">Continue</button>
             </div>
           </div>
         )}
 
-        {/* Step: Create Work Order */}
+        {/* Step: Create */}
         {currentStep === 'create' && (
-          <div className="space-y-8">
-            <div className="border-4 border-black p-8 bg-green-50">
-              <p className="text-xs tracking-widest font-bold text-gray-600 mb-3">STEP 3</p>
-              <h2 className="text-2xl font-bold mb-4 tracking-widest">CREATE WORK ORDER</h2>
-
-              <div className="space-y-4 text-sm">
-                <p className="text-gray-700">
-                  A work order is created between {scenario.client.name} and {scenario.freelancer.name}. At this stage, no funds are locked yet. Both parties need to agree on terms before the client funds the project.
-                </p>
-
-                <div className="border-2 border-black p-4 bg-white space-y-3">
-                  <p>
-                    <strong>Client:</strong> {scenario.client.name}
-                  </p>
-                  <p>
-                    <strong>Freelancer:</strong> {scenario.freelancer.name}
-                  </p>
-                  <p>
-                    <strong>Project:</strong> {scenario.project.title}
-                  </p>
-                  <p>
-                    <strong>Amount:</strong> {scenario.project.amount} ETH
-                  </p>
-                  <p>
-                    <strong>Duration:</strong> {scenario.project.durationDays} days
-                  </p>
-                  <p>
-                    <strong>Status:</strong> PENDING CLIENT APPROVAL
-                  </p>
-                </div>
-
-                <p className="bg-yellow-50 border border-yellow-300 p-3 text-xs">
-                  Next: Client will fund the project, which locks funds in escrow. The escrow amount depends on both parties' reputation scores.
-                </p>
+          <div className="space-y-6 animate-fade-in">
+            <div className="solid-card p-8" style={{ borderColor: 'rgba(16,185,129,0.2)' }}>
+              <p className="label" style={{ color: 'var(--accent-emerald)' }}>Step 3</p>
+              <h2 className="text-2xl font-bold mb-4 tracking-tight">Create Work Order</h2>
+              <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
+                A work order is created between {scenario.client.name} and {scenario.freelancer.name}. No funds locked yet.
+              </p>
+              <div className="solid-card p-4 space-y-2 text-sm" style={{ background: 'var(--bg-primary)' }}>
+                <p><strong>Client:</strong> {scenario.client.name}</p>
+                <p><strong>Freelancer:</strong> {scenario.freelancer.name}</p>
+                <p><strong>Project:</strong> {scenario.project.title}</p>
+                <p><strong>Amount:</strong> {scenario.project.amount} ETH</p>
+                <p><strong>Status:</strong> <span style={{ color: 'var(--accent-amber)' }}>PENDING</span></p>
               </div>
             </div>
-
-            <button
-              onClick={nextStep}
-              disabled={loading}
-              className="w-full border-4 border-black px-8 py-4 text-sm font-bold tracking-widest bg-black text-white hover:bg-white hover:text-black transition disabled:opacity-50"
-            >
-              {loading ? 'CALCULATING ESCROW...' : 'PROCEED TO FUNDING'}
+            <button onClick={nextStep} disabled={loading} className="btn-primary w-full" style={{ padding: '16px' }}>
+              {loading ? 'Calculating Escrow...' : 'Proceed to Funding'}
             </button>
           </div>
         )}
 
-        {/* Step: Fund Project */}
+        {/* Step: Fund */}
         {currentStep === 'fund' && escrowData && (
-          <div className="space-y-8">
-            <div className="border-4 border-black p-8 bg-yellow-50">
-              <p className="text-xs tracking-widest font-bold text-gray-600 mb-3">STEP 4</p>
-              <h2 className="text-2xl font-bold mb-4 tracking-widest">FUND PROJECT (LOCK ESCROW)</h2>
-              <p className="text-sm text-gray-700">
-                Client {scenario.client.name} is now funding the project. The escrow calculation below shows how both parties' reputation scores affect the escrow cost.
+          <div className="space-y-6 animate-fade-in">
+            <div className="solid-card p-8" style={{ borderColor: 'rgba(245,158,11,0.2)' }}>
+              <p className="label" style={{ color: 'var(--accent-amber)' }}>Step 4</p>
+              <h2 className="text-2xl font-bold mb-2 tracking-tight">Fund Project (Lock Escrow)</h2>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Reputation scores determine escrow cost. See the breakdown below.
               </p>
             </div>
-
             <EscrowVisualizer calculation={escrowData} />
-
             <div className="flex gap-4">
-              <button
-                onClick={() => setCurrentStep('create')}
-                className="flex-1 border-2 border-black px-8 py-3 text-sm font-bold tracking-widest hover:bg-black hover:text-white transition"
-              >
-                BACK
-              </button>
-              <button
-                onClick={nextStep}
-                className="flex-1 border-4 border-black px-8 py-3 text-sm font-bold tracking-widest bg-black text-white hover:bg-white hover:text-black transition"
-              >
-                FUNDS LOCKED - FREELANCER STARTS WORK
-              </button>
+              <button onClick={() => setCurrentStep('create')} className="btn-secondary flex-1">Back</button>
+              <button onClick={nextStep} className="btn-primary flex-1">Funds Locked — Start Work</button>
             </div>
           </div>
         )}
 
-        {/* Step: Deliver Work */}
+        {/* Step: Deliver */}
         {currentStep === 'deliver' && (
-          <div className="space-y-8">
-            <div className="border-4 border-black p-8 bg-purple-50">
-              <p className="text-xs tracking-widest font-bold text-gray-600 mb-3">STEP 5</p>
-              <h2 className="text-2xl font-bold mb-4 tracking-widest">DELIVER WORK</h2>
-
-              <div className="space-y-4 text-sm">
-                <p className="text-gray-700">
-                  {scenario.freelancer.name} has completed the project "{scenario.project.title}" after {scenario.project.durationDays} days of work. The deliverables are now submitted for client review.
-                </p>
-
-                <div className="border-2 border-black p-4 bg-white space-y-2">
-                  <p>
-                    <strong>Deliverables:</strong> Project files, documentation, deployment guide
-                  </p>
-                  <p>
-                    <strong>IPFS Hash:</strong>
-                    <code className="block font-mono text-xs mt-1">QmXxX...xXxX</code>
-                  </p>
-                  <p>
-                    <strong>Submission Date:</strong> {new Date().toLocaleDateString()}
-                  </p>
-                  <p>
-                    <strong>Status:</strong> AWAITING CLIENT REVIEW
-                  </p>
-                </div>
-
-                <p className="bg-blue-50 border border-blue-300 p-3 text-xs">
-                  Client has 2 days to review and either approve, request changes, or initiate a dispute.
-                </p>
+          <div className="space-y-6 animate-fade-in">
+            <div className="solid-card p-8" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
+              <p className="label" style={{ color: 'var(--accent-violet-light)' }}>Step 5</p>
+              <h2 className="text-2xl font-bold mb-4 tracking-tight">Deliver Work</h2>
+              <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+                {scenario.freelancer.name} completed &quot;{scenario.project.title}&quot; after {scenario.project.durationDays} days.
+              </p>
+              <div className="solid-card p-4 space-y-2 text-sm" style={{ background: 'var(--bg-primary)' }}>
+                <p><strong>Deliverables:</strong> Project files, documentation, deployment guide</p>
+                <p><strong>IPFS Hash:</strong> <code style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>QmXxX...xXxX</code></p>
+                <p><strong>Status:</strong> <span style={{ color: 'var(--accent-blue-light)' }}>AWAITING REVIEW</span></p>
               </div>
             </div>
-
             <div className="flex gap-4">
-              <button
-                onClick={() => setCurrentStep('fund')}
-                className="flex-1 border-2 border-black px-8 py-3 text-sm font-bold tracking-widest hover:bg-black hover:text-white transition"
-              >
-                BACK
-              </button>
-              <button
-                onClick={nextStep}
-                className="flex-1 border-4 border-black px-8 py-3 text-sm font-bold tracking-widest bg-black text-white hover:bg-white hover:text-black transition"
-              >
-                PROCEED TO APPROVAL
-              </button>
+              <button onClick={() => setCurrentStep('fund')} className="btn-secondary flex-1">Back</button>
+              <button onClick={nextStep} className="btn-primary flex-1">Proceed to Approval</button>
             </div>
           </div>
         )}
 
-        {/* Step: Approve & Complete */}
+        {/* Step: Approve */}
         {currentStep === 'approve' && (
-          <div className="space-y-8">
-            <div className="border-4 border-black p-8 bg-orange-50">
-              <p className="text-xs tracking-widest font-bold text-gray-600 mb-3">STEP 6</p>
-              <h2 className="text-2xl font-bold mb-4 tracking-widest">APPROVE & COMPLETE</h2>
+          <div className="space-y-6 animate-fade-in">
+            <div className="solid-card p-8">
+              <p className="label" style={{ color: 'var(--accent-amber)' }}>Step 6</p>
+              <h2 className="text-2xl font-bold mb-4 tracking-tight">Approve & Complete</h2>
+              <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
+                {scenario.client.name} reviews and decides the outcome:
+              </p>
 
-              <div className="space-y-4 text-sm mb-6">
-                <p className="text-gray-700">
-                  {scenario.client.name} reviews the deliverables and decides the outcome:
-                </p>
-
-                <div className="space-y-3">
-                  <label className="flex items-center gap-3 border-2 border-black p-4 cursor-pointer hover:bg-gray-50">
+              <div className="space-y-3">
+                {[
+                  { value: 'completed', label: 'Approve — Work is satisfactory', desc: 'Funds released to freelancer, credential minted' },
+                  { value: 'disputed_favorable', label: 'Dispute — Freelancer wins', desc: 'Arbitration sided with freelancer' },
+                  { value: 'disputed_unfavorable', label: 'Dispute — Client wins', desc: 'Work did not meet standards' },
+                  { value: 'refunded', label: 'Refund — No work delivered', desc: 'Project cancelled, full refund' },
+                ].map((opt) => (
+                  <label
+                    key={opt.value}
+                    className="flex items-center gap-4 p-4 rounded-lg cursor-pointer transition-all duration-200"
+                    style={{
+                      background: outcome === opt.value ? 'rgba(59,130,246,0.08)' : 'var(--bg-elevated)',
+                      border: `1px solid ${outcome === opt.value ? 'var(--accent-blue)' : 'var(--border-default)'}`,
+                    }}
+                  >
                     <input
                       type="radio"
                       name="outcome"
-                      value="completed"
-                      checked={outcome === 'completed'}
-                      onChange={e => setOutcome(e.target.value as typeof outcome)}
-                      className="w-4 h-4"
+                      value={opt.value}
+                      checked={outcome === opt.value}
+                      onChange={(e) => setOutcome(e.target.value as typeof outcome)}
+                      className="w-4 h-4 accent-blue-500"
                     />
                     <div>
-                      <p className="font-bold">Approve - Work is satisfactory</p>
-                      <p className="text-xs text-gray-600">Funds released to freelancer, credential minted</p>
+                      <p className="font-semibold text-sm">{opt.label}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{opt.desc}</p>
                     </div>
                   </label>
-
-                  <label className="flex items-center gap-3 border-2 border-black p-4 cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="outcome"
-                      value="disputed_favorable"
-                      checked={outcome === 'disputed_favorable'}
-                      onChange={e => setOutcome(e.target.value as typeof outcome)}
-                      className="w-4 h-4"
-                    />
-                    <div>
-                      <p className="font-bold">Dispute - Resolved in Freelancer's favor</p>
-                      <p className="text-xs text-gray-600">Client had issues but arbitration sided with freelancer</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3 border-2 border-black p-4 cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="outcome"
-                      value="disputed_unfavorable"
-                      checked={outcome === 'disputed_unfavorable'}
-                      onChange={e => setOutcome(e.target.value as typeof outcome)}
-                      className="w-4 h-4"
-                    />
-                    <div>
-                      <p className="font-bold">Dispute - Client Wins</p>
-                      <p className="text-xs text-gray-600">Work did not meet standards, client refunded, freelancer reputation impacted</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3 border-2 border-black p-4 cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="outcome"
-                      value="refunded"
-                      checked={outcome === 'refunded'}
-                      onChange={e => setOutcome(e.target.value as typeof outcome)}
-                      className="w-4 h-4"
-                    />
-                    <div>
-                      <p className="font-bold">Refund - No Work Delivered</p>
-                      <p className="text-xs text-gray-600">Project cancelled before completion, full refund</p>
-                    </div>
-                  </label>
-                </div>
-
-                {outcome === 'completed' && (
-                  <div>
-                    <label className="text-sm font-bold text-gray-600 block mb-2">
-                      Client Rating for Freelancer: {clientRating}/5
-                    </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="5"
-                      step="1"
-                      value={clientRating}
-                      onChange={e => setClientRating(Number(e.target.value))}
-                      className="w-full h-2 bg-gray-300 border-2 border-black rounded"
-                    />
-                  </div>
-                )}
+                ))}
               </div>
+
+              {outcome === 'completed' && (
+                <div className="mt-6">
+                  <label className="text-sm font-medium block mb-3">Client Rating: {clientRating}/5</label>
+                  <input
+                    type="range"
+                    min="1" max="5" step="1"
+                    value={clientRating}
+                    onChange={(e) => setClientRating(Number(e.target.value))}
+                    className="w-full h-2 rounded-full accent-blue-500"
+                    style={{ background: 'var(--bg-elevated)' }}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4">
-              <button
-                onClick={() => setCurrentStep('deliver')}
-                className="flex-1 border-2 border-black px-8 py-3 text-sm font-bold tracking-widest hover:bg-black hover:text-white transition"
-              >
-                BACK
-              </button>
-              <button
-                onClick={nextStep}
-                disabled={loading}
-                className="flex-1 border-4 border-black px-8 py-3 text-sm font-bold tracking-widest bg-black text-white hover:bg-white hover:text-black transition disabled:opacity-50"
-              >
-                {loading ? 'PROCESSING COMPLETION...' : 'COMPLETE PROJECT'}
+              <button onClick={() => setCurrentStep('deliver')} className="btn-secondary flex-1">Back</button>
+              <button onClick={nextStep} disabled={loading} className="btn-primary flex-1">
+                {loading ? 'Processing...' : 'Complete Project'}
               </button>
             </div>
           </div>
         )}
 
-        {/* Step: View Certificate & Results */}
+        {/* Step: Complete */}
         {currentStep === 'complete' && certificateData && reputationImpact && ratingImpact && timeline.length > 0 && (
-          <div className="space-y-8">
-            {/* Tabs for different sections */}
-            <div className="flex gap-2 border-b-4 border-black flex-wrap items-center">
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-wrap gap-2" style={{ borderBottom: '1px solid var(--border-default)', paddingBottom: '12px' }}>
               {[
-                { id: 'certificate' as const, label: 'CERTIFICATE' },
-                { id: 'reputation' as const, label: 'REPUTATION IMPACT' },
-                { id: 'timeline' as const, label: 'TIMELINE' },
-                { id: 'blockchain' as const, label: 'BLOCKCHAIN VERIFICATION' },
-              ].map(tab => (
+                { id: 'certificate' as const, label: 'Certificate' },
+                { id: 'reputation' as const, label: 'Reputation Impact' },
+                { id: 'timeline' as const, label: 'Timeline' },
+                { id: 'blockchain' as const, label: 'Blockchain' },
+              ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-3 text-xs font-bold tracking-widest border-b-4 transition ${
-                    activeTab === tab.id
-                      ? 'border-black bg-green-100'
-                      : 'border-transparent text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className="px-5 py-2.5 text-xs font-medium rounded-lg transition-all"
+                  style={{
+                    background: activeTab === tab.id ? 'var(--accent-blue)' : 'transparent',
+                    color: activeTab === tab.id ? 'white' : 'var(--text-secondary)',
+                    border: `1px solid ${activeTab === tab.id ? 'var(--accent-blue)' : 'var(--border-default)'}`,
+                  }}
                 >
                   {tab.label}
                 </button>
               ))}
 
-              {/* Dispute Simulator Button */}
               {(outcome === 'disputed_favorable' || outcome === 'disputed_unfavorable') && (
                 <button
                   onClick={() => setShowDisputeSimulator(true)}
-                  className="ml-auto px-6 py-3 text-xs font-bold tracking-widest border-2 border-red-600 bg-red-100 hover:bg-red-200 transition text-red-700"
+                  className="ml-auto px-5 py-2.5 text-xs font-medium rounded-lg"
+                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--accent-rose)' }}
                 >
-                  VIEW DISPUTE RESOLUTION
+                  View Dispute Resolution
                 </button>
               )}
             </div>
 
-            {/* Tab Content */}
-            {activeTab === 'certificate' && <CertificateGenerator data={certificateData as Record<string, any>} />}
-            {activeTab === 'reputation' && (
-              <ReputationRatingVisualizer reputationImpact={reputationImpact} ratingImpact={ratingImpact} />
-            )}
-            {activeTab === 'timeline' && (
-              <TimelineVisualizer events={timeline} durationDays={scenario.project.durationDays} />
-            )}
+            {activeTab === 'certificate' && <CertificateGenerator data={certificateData as any} />}
+            {activeTab === 'reputation' && <ReputationRatingVisualizer reputationImpact={reputationImpact} ratingImpact={ratingImpact} />}
+            {activeTab === 'timeline' && <TimelineVisualizer events={timeline} durationDays={scenario.project.durationDays} />}
             {activeTab === 'blockchain' && (
               <BlockchainVerification
                 certificateId={certificateData.certificateId as string}
@@ -716,24 +606,13 @@ export default function SimulatePage() {
             )}
 
             <div className="flex gap-4">
-              <button
-                onClick={resetSimulation}
-                className="flex-1 border-2 border-black px-8 py-3 text-sm font-bold tracking-widest hover:bg-black hover:text-white transition"
-              >
-                START NEW SIMULATION
-              </button>
-              <button
-                onClick={() => (window.location.href = '/')}
-                className="flex-1 border-4 border-black px-8 py-3 text-sm font-bold tracking-widest bg-black text-white hover:bg-white hover:text-black transition"
-              >
-                RETURN HOME
-              </button>
+              <button onClick={resetSimulation} className="btn-secondary flex-1">Start New Simulation</button>
+              <button onClick={() => (window.location.href = '/')} className="btn-primary flex-1">Return Home</button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Dispute Resolution Simulator Modal */}
       {showDisputeSimulator && certificateData && (
         <DisputeResolutionSimulator
           data={{
@@ -749,6 +628,8 @@ export default function SimulatePage() {
           onClose={() => setShowDisputeSimulator(false)}
         />
       )}
+
+      <Footer />
     </div>
   );
 }

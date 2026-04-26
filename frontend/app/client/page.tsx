@@ -3,14 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 const API_BASE = 'http://localhost:3001/api';
-
-type FreelancerReputation = {
-  reputationScore: number;
-  credentialCount: number;
-  averageRating: number;
-};
+type FreelancerReputation = { reputationScore: number; credentialCount: number; averageRating: number };
 
 export default function ClientCreateProject() {
   const [step, setStep] = useState(1);
@@ -23,332 +20,130 @@ export default function ClientCreateProject() {
   const [error, setError] = useState('');
 
   const handleLookupReputation = async () => {
-    if (!freelancerAddress) {
-      setError('Address required');
-      return;
-    }
-    try {
-      setError('');
-      setLoading(true);
-      const response = await axios.get(`${API_BASE}/reputation/${freelancerAddress}`);
-      setReputation(response.data);
-      setStep(2);
-    } catch {
-      setError('Not found');
-    } finally {
-      setLoading(false);
-    }
+    if (!freelancerAddress) { setError('Address required'); return; }
+    try { setError(''); setLoading(true); const response = await axios.get(`${API_BASE}/reputation/${freelancerAddress}`); setReputation(response.data); setStep(2); } catch { setError('Not found'); } finally { setLoading(false); }
   };
 
   const handleCreateProject = async () => {
-    try {
-      setError('');
-      setLoading(true);
-      const response = await axios.post(`${API_BASE}/projects`, {
-        clientAddress: '0xClientAddressHere',
-        freelancerAddress,
-        amount,
-        duration: parseInt(duration),
-        description,
-      });
-      setStep(4);
-    } catch {
-      setError('Failed');
-    } finally {
-      setLoading(false);
-    }
+    try { setError(''); setLoading(true); await axios.post(`${API_BASE}/projects`, { clientAddress: '0xClientAddressHere', freelancerAddress, amount, duration: parseInt(duration), description }); setStep(4); } catch { setError('Failed'); } finally { setLoading(false); }
   };
 
-  const reputationDiscount = reputation ? (100 - (reputation.reputationScore / 100)) : 0;
-  const discountedAmount = amount ? (parseFloat(amount) * (100 - reputationDiscount) / 100).toFixed(4) : 0;
+  const reputationDiscount = reputation ? 100 - reputation.reputationScore / 100 : 0;
+  const discountedAmount = amount ? (parseFloat(amount) * (100 - reputationDiscount) / 100).toFixed(4) : '0';
 
   return (
-    <div className="min-h-screen bg-white text-black font-mono">
-      {/* Header */}
-      <header className="border-b-4 border-black">
-        <div className="max-w-6xl mx-auto px-8 py-6">
-          <div className="flex items-center justify-between mb-4">
-            <Link href="/">
-              <button className="text-xs tracking-widest font-bold hover:underline">← BACK</button>
-            </Link>
-            <Link href="/history">
-              <button className="border-2 border-black px-3 py-2 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition">
-                YOUR PROJECTS
-              </button>
-            </Link>
-          </div>
-          <h1 className="text-3xl font-bold">CREATE PROJECT</h1>
-        </div>
-      </header>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <section className="py-12"><div className="section-container"><div className="flex items-center justify-between"><h1 className="text-4xl font-bold tracking-tight">Create Project</h1><Link href="/history"><button className="btn-secondary" style={{ fontSize: '12px', padding: '8px 16px' }}>Your Projects</button></Link></div></div></section>
 
-      <div className="max-w-4xl mx-auto px-8 py-16">
-        {/* Step Indicator */}
-        <div className="mb-16">
-          <div className="flex justify-between items-end gap-4 mb-8">
-            {[1, 2, 3, 4].map((s) => (
-              <div key={s} className="flex-1">
-                <div className={`h-2 ${step >= s ? 'bg-black' : 'bg-gray-300'} mb-2`} />
-                <p className="text-xs tracking-widest font-bold">
-                  {s === 1 && 'FIND'}
-                  {s === 2 && 'BUDGET'}
-                  {s === 3 && 'REVIEW'}
-                  {s === 4 && 'DONE'}
-                </p>
-              </div>
-            ))}
-          </div>
+      <div className="section-container flex-1 pb-16" style={{ maxWidth: '800px' }}>
+        {/* Step indicator */}
+        <div className="flex gap-4 mb-12">
+          {[{ n: 1, l: 'Find' }, { n: 2, l: 'Budget' }, { n: 3, l: 'Review' }, { n: 4, l: 'Done' }].map((s) => (
+            <div key={s.n} className="flex-1">
+              <div className="h-1.5 rounded-full mb-2" style={{ background: step >= s.n ? 'var(--accent-blue)' : 'var(--border-default)' }} />
+              <p className="text-xs font-medium" style={{ color: step >= s.n ? 'var(--text-primary)' : 'var(--text-muted)' }}>{s.l}</p>
+            </div>
+          ))}
         </div>
 
-        {/* STEP 1 */}
         {step === 1 && (
-          <div>
-            <h2 className="text-3xl font-bold mb-8">FIND TALENT</h2>
-            <div className="border-2 border-black p-8">
-              <div className="mb-6">
-                <label className="text-xs tracking-widest font-bold block mb-4">
-                  FREELANCER ADDRESS
-                </label>
-                <input
-                  type="text"
-                  value={freelancerAddress}
-                  onChange={(e) => {
-                    setFreelancerAddress(e.target.value);
-                    setError('');
-                  }}
-                  placeholder="0x1234567890123456789012345678901234567890"
-                  className="w-full border-2 border-black px-4 py-3 text-sm focus:outline-none focus:bg-black focus:text-white transition"
-                />
-              </div>
-
-              {error && (
-                <div className="border-2 border-black p-4 mb-6 bg-red-100">
-                  <p className="text-sm font-bold">{error}</p>
-                </div>
-              )}
-
-              <button
-                onClick={handleLookupReputation}
-                disabled={!freelancerAddress || loading}
-                className="w-full border-2 border-black bg-black text-white py-3 font-bold text-sm tracking-widest hover:bg-white hover:text-black disabled:opacity-50 transition-all"
-              >
-                {loading ? 'CHECKING...' : 'CHECK REPUTATION'}
-              </button>
+          <div className="animate-fade-in">
+            <h2 className="text-2xl font-bold mb-6">Find Talent</h2>
+            <div className="solid-card p-8">
+              <p className="label">Freelancer Address</p>
+              <input type="text" value={freelancerAddress} onChange={(e) => { setFreelancerAddress(e.target.value); setError(''); }} placeholder="0x1234..." className="input-field mb-4" />
+              {error && <div className="p-3 rounded-lg mb-4" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}><p className="text-sm" style={{ color: 'var(--accent-rose)' }}>{error}</p></div>}
+              <button onClick={handleLookupReputation} disabled={!freelancerAddress || loading} className="btn-primary w-full">{loading ? 'Checking...' : 'Check Reputation'}</button>
             </div>
           </div>
         )}
 
-        {/* STEP 2 */}
         {step === 2 && reputation && (
-          <div>
-            <h2 className="text-3xl font-bold mb-8">BUDGET & DETAILS</h2>
-
-            {/* Reputation Box */}
-            <div className="border-2 border-black p-8 mb-8">
-              <div className="grid grid-cols-2 gap-8 mb-8">
-                <div>
-                  <p className="text-xs tracking-widest font-bold mb-2">REPUTATION</p>
-                  <p className="text-4xl font-bold">{(reputation.reputationScore / 100).toFixed(0)}%</p>
-                </div>
-                <div>
-                  <p className="text-xs tracking-widest font-bold mb-2">YOUR DISCOUNT</p>
-                  <p className="text-4xl font-bold text-red-700">{reputationDiscount.toFixed(0)}%</p>
-                </div>
+          <div className="animate-fade-in space-y-6">
+            <h2 className="text-2xl font-bold">Budget & Details</h2>
+            <div className="solid-card p-6">
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div><p className="label">Reputation</p><p className="text-3xl font-bold gradient-text">{(reputation.reputationScore / 100).toFixed(0)}%</p></div>
+                <div><p className="label">Your Discount</p><p className="text-3xl font-bold" style={{ color: 'var(--accent-emerald)' }}>{reputationDiscount.toFixed(0)}%</p></div>
               </div>
-
-              <div className="border-t-2 border-black pt-8 grid grid-cols-2 gap-8 text-sm">
-                <div>
-                  <p className="text-xs tracking-widest font-bold mb-1">PROJECTS</p>
-                  <p className="text-2xl font-bold">{reputation.credentialCount}</p>
-                </div>
-                <div>
-                  <p className="text-xs tracking-widest font-bold mb-1">RATING</p>
-                  <p className="text-2xl font-bold">{reputation.averageRating}★</p>
-                </div>
+              <div className="grid grid-cols-2 gap-6 text-sm" style={{ borderTop: '1px solid var(--border-default)', paddingTop: '16px' }}>
+                <div><p className="label">Projects</p><p className="text-xl font-bold">{reputation.credentialCount}</p></div>
+                <div><p className="label">Rating</p><p className="text-xl font-bold">{reputation.averageRating}★</p></div>
               </div>
             </div>
 
-            {/* Budget */}
-            <div className="border-2 border-black p-8 mb-8">
-              <div className="mb-6">
-                <label className="text-xs tracking-widest font-bold block mb-4">BUDGET (ETH)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="2.5"
-                  className="w-full border-2 border-black px-4 py-3 text-lg font-bold focus:outline-none focus:bg-black focus:text-white transition"
-                />
-              </div>
-
+            <div className="solid-card p-6 space-y-5">
+              <div><p className="label">Budget (ETH)</p><input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="2.5" className="input-field text-lg font-bold" /></div>
               {amount && (
-                <div className="bg-gray-100 border-2 border-black p-4 mb-6 text-sm">
-                  <div className="flex justify-between mb-2">
-                    <span>ORIGINAL</span>
-                    <span className="font-bold">Ξ {parseFloat(amount).toFixed(4)}</span>
-                  </div>
-                  <div className="flex justify-between mb-2 border-t-2 border-black pt-2">
-                    <span>DISCOUNT ({reputationDiscount.toFixed(0)}%)</span>
-                    <span className="font-bold text-red-700">-Ξ {(parseFloat(amount) * reputationDiscount / 100).toFixed(4)}</span>
-                  </div>
-                  <div className="flex justify-between border-t-2 border-black pt-2 font-bold">
-                    <span>YOU PAY</span>
-                    <span>Ξ {discountedAmount}</span>
-                  </div>
+                <div className="p-4 rounded-lg space-y-2 text-sm" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)' }}>
+                  <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Original</span><span className="font-semibold">Ξ {parseFloat(amount).toFixed(4)}</span></div>
+                  <div className="flex justify-between" style={{ color: 'var(--accent-emerald)' }}><span>Discount ({reputationDiscount.toFixed(0)}%)</span><span className="font-semibold">-Ξ {(parseFloat(amount) * reputationDiscount / 100).toFixed(4)}</span></div>
+                  <div className="flex justify-between font-bold text-lg pt-2" style={{ borderTop: '1px solid var(--border-default)' }}><span>You Pay</span><span>Ξ {discountedAmount}</span></div>
                 </div>
               )}
-
-              <div className="mb-6">
-                <label className="text-xs tracking-widest font-bold block mb-4">TIMELINE</label>
-                <select
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  className="w-full border-2 border-black px-4 py-3 focus:outline-none focus:bg-black focus:text-white transition"
-                >
-                  {[3, 5, 7, 14, 30].map(d => (
-                    <option key={d} value={d}>{d} days</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mb-8">
-                <label className="text-xs tracking-widest font-bold block mb-4">DESCRIPTION</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What needs to be built?"
-                  rows={5}
-                  className="w-full border-2 border-black px-4 py-3 focus:outline-none focus:bg-black focus:text-white transition font-mono text-sm"
-                />
-              </div>
-
+              <div><p className="label">Timeline</p><select value={duration} onChange={(e) => setDuration(e.target.value)} className="input-field">{[3, 5, 7, 14, 30].map((d) => <option key={d} value={d}>{d} days</option>)}</select></div>
+              <div><p className="label">Description</p><textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What needs to be built?" rows={4} className="input-field" style={{ fontFamily: 'var(--font-mono)', fontSize: '14px' }} /></div>
               <div className="flex gap-4">
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex-1 border-2 border-black px-4 py-3 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition-all"
-                >
-                  BACK
-                </button>
-                <button
-                  onClick={() => setStep(3)}
-                  disabled={!amount || !description}
-                  className="flex-1 border-2 border-black bg-black text-white px-4 py-3 text-xs font-bold tracking-widest hover:bg-white hover:text-black disabled:opacity-50 transition-all"
-                >
-                  REVIEW
-                </button>
+                <button onClick={() => setStep(1)} className="btn-secondary flex-1">Back</button>
+                <button onClick={() => setStep(3)} disabled={!amount || !description} className="btn-primary flex-1">Review</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* STEP 3 */}
         {step === 3 && reputation && (
-          <div>
-            <h2 className="text-3xl font-bold mb-8">REVIEW & FUND</h2>
-
-            <div className="border-2 border-black p-8 mb-8">
-              <div className="mb-8 border-b-2 border-black pb-8">
-                <p className="text-xs tracking-widest font-bold mb-2">FREELANCER</p>
-                <p className="font-mono text-sm break-all mb-4">{freelancerAddress}</p>
+          <div className="animate-fade-in space-y-6">
+            <h2 className="text-2xl font-bold">Review & Fund</h2>
+            <div className="solid-card p-6 space-y-6">
+              <div style={{ borderBottom: '1px solid var(--border-default)', paddingBottom: '16px' }}>
+                <p className="label">Freelancer</p>
+                <p className="text-sm break-all mb-3" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{freelancerAddress}</p>
                 <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-xs tracking-widest mb-1">REPUTATION</p>
-                    <p className="font-bold text-lg">{(reputation.reputationScore / 100).toFixed(0)}%</p>
-                  </div>
-                  <div>
-                    <p className="text-xs tracking-widest mb-1">PROJECTS</p>
-                    <p className="font-bold text-lg">{reputation.credentialCount}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs tracking-widest mb-1">RATING</p>
-                    <p className="font-bold text-lg">{reputation.averageRating}★</p>
-                  </div>
+                  <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Reputation</p><p className="font-bold">{(reputation.reputationScore / 100).toFixed(0)}%</p></div>
+                  <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Projects</p><p className="font-bold">{reputation.credentialCount}</p></div>
+                  <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Rating</p><p className="font-bold">{reputation.averageRating}★</p></div>
                 </div>
               </div>
-
-              <div className="mb-8 border-b-2 border-black pb-8">
-                <p className="text-xs tracking-widest font-bold mb-4">PROJECT</p>
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <p className="text-xs tracking-widest mb-1">TIMELINE</p>
-                    <p className="font-bold">{duration} days</p>
-                  </div>
-                  <div>
-                    <p className="text-xs tracking-widest mb-1">DESCRIPTION</p>
-                    <p className="font-mono">{description}</p>
-                  </div>
-                </div>
+              <div style={{ borderBottom: '1px solid var(--border-default)', paddingBottom: '16px' }}>
+                <p className="label">Project</p>
+                <p className="text-sm mb-1">{duration} days</p>
+                <p className="text-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{description}</p>
               </div>
-
-              <div className="bg-gray-100 p-6 border-2 border-black mb-8">
-                <p className="text-xs tracking-widest font-bold mb-4">COST BREAKDOWN</p>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span>ORIGINAL</span>
-                    <span className="font-bold">Ξ {parseFloat(amount).toFixed(4)}</span>
-                  </div>
-                  <div className="flex justify-between text-red-700 font-bold">
-                    <span>DISCOUNT ({reputationDiscount.toFixed(0)}%)</span>
-                    <span>-Ξ {(parseFloat(amount) * reputationDiscount / 100).toFixed(4)}</span>
-                  </div>
-                  <div className="border-t-2 border-black pt-3 flex justify-between font-bold text-lg">
-                    <span>TOTAL</span>
-                    <span>Ξ {discountedAmount}</span>
-                  </div>
-                </div>
+              <div className="p-4 rounded-lg space-y-2 text-sm" style={{ background: 'var(--bg-elevated)' }}>
+                <p className="label">Cost Breakdown</p>
+                <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Original</span><span className="font-semibold">Ξ {parseFloat(amount).toFixed(4)}</span></div>
+                <div className="flex justify-between font-semibold" style={{ color: 'var(--accent-emerald)' }}><span>Discount</span><span>-Ξ {(parseFloat(amount) * reputationDiscount / 100).toFixed(4)}</span></div>
+                <div className="flex justify-between font-bold text-lg pt-2" style={{ borderTop: '1px solid var(--border-default)' }}><span>Total</span><span>Ξ {discountedAmount}</span></div>
               </div>
-
               <div className="flex gap-4">
-                <button
-                  onClick={() => setStep(2)}
-                  className="flex-1 border-2 border-black px-4 py-3 text-xs font-bold tracking-widest hover:bg-black hover:text-white transition-all"
-                >
-                  BACK
-                </button>
-                <button
-                  onClick={handleCreateProject}
-                  disabled={loading}
-                  className="flex-1 border-2 border-black bg-black text-white px-4 py-3 text-xs font-bold tracking-widest hover:bg-white hover:text-black disabled:opacity-50 transition-all"
-                >
-                  {loading ? 'FUNDING...' : 'FUND ESCROW'}
-                </button>
+                <button onClick={() => setStep(2)} className="btn-secondary flex-1">Back</button>
+                <button onClick={handleCreateProject} disabled={loading} className="btn-primary flex-1">{loading ? 'Funding...' : 'Fund Escrow'}</button>
               </div>
-
-              {error && (
-                <div className="mt-4 border-2 border-black p-4 bg-red-100">
-                  <p className="text-sm font-bold">{error}</p>
-                </div>
-              )}
+              {error && <div className="p-3 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}><p className="text-sm" style={{ color: 'var(--accent-rose)' }}>{error}</p></div>}
             </div>
           </div>
         )}
 
-        {/* STEP 4 */}
         {step === 4 && (
-          <div>
-            <div className="border-2 border-black p-8 text-center">
-              <p className="text-6xl mb-6">✓</p>
-              <h2 className="text-3xl font-bold mb-4">PROJECT CREATED</h2>
-              <p className="text-lg mb-8">Escrow funded and freelancer notified</p>
-
-              <div className="bg-gray-100 border-2 border-black p-6 mb-8">
-                <p className="text-xs tracking-widest font-bold mb-2">AMOUNT FUNDED</p>
-                <p className="text-4xl font-bold mb-2">Ξ {discountedAmount}</p>
-                <p className="text-sm text-red-700 font-bold">
-                  SAVED Ξ {(parseFloat(amount) * reputationDiscount / 100).toFixed(4)}
-                </p>
+          <div className="animate-fade-in">
+            <div className="solid-card p-8 text-center">
+              <div className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
+                <span className="text-2xl" style={{ color: 'var(--accent-emerald)' }}>✓</span>
               </div>
-
-              <Link href="/">
-                <button className="w-full border-2 border-black bg-black text-white py-3 font-bold text-sm tracking-widest hover:bg-white hover:text-black transition-all">
-                  BACK TO HOME
-                </button>
-              </Link>
+              <h2 className="text-2xl font-bold mb-2">Project Created</h2>
+              <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>Escrow funded and freelancer notified</p>
+              <div className="p-4 rounded-lg mb-8" style={{ background: 'var(--bg-elevated)' }}>
+                <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Amount Funded</p>
+                <p className="text-3xl font-bold gradient-text mb-1">Ξ {discountedAmount}</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--accent-emerald)' }}>Saved Ξ {(parseFloat(amount) * reputationDiscount / 100).toFixed(4)}</p>
+              </div>
+              <Link href="/"><button className="btn-primary w-full">Back to Home</button></Link>
             </div>
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

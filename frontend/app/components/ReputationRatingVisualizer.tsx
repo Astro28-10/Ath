@@ -217,7 +217,7 @@ export const ReputationRatingVisualizer: React.FC<ReputationRatingVisualizerProp
                 borderRadius: 0,
               }}
               labelStyle={{ color: '#fff' }}
-              formatter={(value) => `${value.toFixed(1)}%`}
+              formatter={(value) => `${Number(value ?? 0).toFixed(1)}%`}
             />
             <Legend />
             <Bar dataKey="before" fill="#94a3b8" name="Before" />

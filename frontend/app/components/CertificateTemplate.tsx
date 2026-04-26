@@ -31,9 +31,9 @@ export const CertificateTemplate: React.FC<CertificateProps> = ({
     const options = {
       margin: 0,
       filename: `SkillBond-Certificate-${certificateId}.pdf`,
-      image: { type: 'png', quality: 0.98 },
+      image: { type: 'png' as const, quality: 0.98 },
       html2canvas: { scale: 2 },
-      jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' },
+      jsPDF: { orientation: 'landscape' as const, unit: 'mm' as const, format: 'a4' as const },
     };
 
     html2pdf().set(options).from(element).save();
